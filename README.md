@@ -17,10 +17,11 @@ Las PyMEs carecen de un director financiero (CFO) dedicado que audite constantem
 
 **FinanIA** es un agente financiero autónomo construido sobre **Arquitectura Hexagonal (Clean Code)** que actúa como un **Auditor Financiero Estricto**:
 
-1. **Lectura y Validación de Datos**: Importa transacciones reales en JSON ([`data/transactions.json`](file:///c:/Users/senit/OneDrive/Documentos/Platica/data/transactions.json)) validadas con contratos de datos estrictos en **Zod**.
+1. **Lectura y Validación de Datos**: Importa transacciones reales en JSON ([`data/transactions.json`](file:///c:/Users/senit/OneDrive/Documentos/Platica/data/transactions.json)) validadas con contratos de datos strictly tipados en **Zod**.
 2. **Cómputo Determinístico en Código**: Realiza el 100% de las operaciones aritméticas (totales, márgenes, porcentajes y categorías críticas) en TypeScript puro ([`FinancialCalculator.ts`](file:///c:/Users/senit/OneDrive/Documentos/Platica/src/domain/services/FinancialCalculator.ts)). Esto **elimina las alucinaciones matemáticas del LLM**.
 3. **Razonamiento y Diagnóstico Autónomo con Grok 4.7**: Envía las métricas precalculadas al modelo **Grok 4.7** mediante la API OpenAI-compatible (`https://api.reto.pltk.mx/v1`). Grok emite un dictamen cualitativo y un plan de acción estratégico sin gastar tokens en cálculos numéricos.
 4. **Telemetría de Ejecución**: Registra en tiempo real el tiempo de respuesta (latencia en ms) y el consumo total de tokens (`prompt_tokens`, `completion_tokens`, `total_tokens`).
+5. **Exportación de Informes**: Genera automáticamente un reporte ejecutivo en formato Markdown (`reports/audit_report_latest.md`).
 
 ---
 
@@ -41,7 +42,9 @@ src/
 │   └── llm/GrokLLMAdapter.ts                 # Integración End-to-End con Grok 4.7
 ├── application/
 │   └── AgentOrchestrator.ts # Orquestador del ciclo autónomo
-└── index.ts                 # Punto de entrada de la aplicación
+├── infrastructure/
+│   └── ReportExporter.ts    # Exportador de informes ejecutivos en Markdown
+└── index.ts                 # Punto de entrada de la aplicación y CLI
 ```
 
 ---
@@ -72,12 +75,28 @@ LLM_API_KEY=pk_tu_api_key_aqui
 LLM_MODEL=grok-4.7
 ```
 
-### 4. Ejecutar el Agente Autónomo (End-to-End)
+### 4. Ejecutar el Agente Autónomo (Dataset por Defecto)
 ```bash
 npm run start
 ```
 
-### 5. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 5. Pruebas de Escenarios Financieros Dinámicos (Datasets de Auditoría)
+Podés auditar el comportamiento del agente autónomo en tiempo real sobre distintos contextos financieros reales:
+
+- 🔴 **Caso 1: Quiebra Inminente** (Egresos muy superiores a ingresos):
+  ```bash
+  npm run start:quiebra
+  ```
+- 🟢 **Caso 2: Crecimiento Saludable** (Flujo positivo y margen neto elevado):
+  ```bash
+  npm run start:saludable
+  ```
+- 🟡 **Caso 3: Fuga Silenciosa / Gastos Hormiga** (Desangre por gastos no presupuestados):
+  ```bash
+  npm run start:hormiga
+  ```
+
+### 6. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm run test
 ```
@@ -94,31 +113,31 @@ npm run test
 🌐 Conectando con LLM Real (Grok 4.7)...
 🤖 [Agente Financiero] Iniciando ciclo autónomo de análisis...
 📊 [Agente Financiero] Transacciones procesadas: 5
-💰 [Agente Financiero] Ingresos: $3300 | Gastos: $3350 | Beneficio Neto: $-50
+💰 [Ingresos: $14700 | Gastos: $5300 | Beneficio Neto: $9400]
 💡 [Agente Financiero] Diagnóstico y plan generado exitosamente.
 
 --------------------------------------------------
 📌 DICTAMEN DE AUDITORÍA FINANCIERA
 --------------------------------------------------
-Título: Dictamen de auditoría: operación en déficit con quiebre de caja inminente
-Prioridad: HIGH
-Diagnóstico: La unidad opera en pérdida real: ingresos $3300 frente a egresos $3350...
+Título: Dictamen de auditoría: posición de caja sólida con margen neto elevado...
+Prioridad: LOW
+Diagnóstico: Ingresos $14,700 frente a egresos $5,300 dejan beneficio neto de $9,400...
 
 Acciones Recomendadas:
-  1. Contención inmediata de Proveedores: congelar nuevas compras a distribuidora de lácteos...
-  2. Corte de caja en Servicios: auditar consumo eléctrico de refrigeradores...
-  3. Bloqueo de egresos no esenciales: suspender mantenimiento correctivo no crítico...
+  1. Congelar de inmediato gastos no comprometidos...
+  2. Renegociar compra de inventario...
+  3. Separar cobro de ventas en cuenta de operación...
 
-Impacto Estimado: Cerrar la fuga de $-50 y recomponer al menos $170 de caja en el siguiente ciclo.
+Impacto Estimado: Preserva $9,400 de beneficio en el periodo auditado.
 
 --------------------------------------------------
 ⏱️ TELEMETRÍA DE EJECUCIÓN (SEMANA 3 PREVIEW)
 --------------------------------------------------
 Modelo: grok-4.7
-Tiempo de respuesta: 19630 ms
-Prompt Tokens: 1991
-Completion Tokens: 522
-Total Tokens: 3212
+Tiempo de respuesta: 20365 ms
+Prompt Tokens: 1996
+Completion Tokens: 524
+Total Tokens: 3046
 --------------------------------------------------
 ```
 
