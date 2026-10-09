@@ -5,6 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx src/index.ts",
+    "start:quiebra": "tsx src/index.ts data/casos/quiebra_inminente.json",
+    "start:saludable": "tsx src/index.ts data/casos/crecimiento_saludable.json",
+    "start:hormiga": "tsx src/index.ts data/casos/fuga_silenciosa_servicios.json",
     "dev": "tsx watch src/index.ts",
     "test": "vitest run"
   },

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import path from "node:path";
 import { JsonFileFinancialAdapter } from "./adapters/repository/JsonFileFinancialAdapter.js";
 import { AutonomousDecisionAdapter } from "./adapters/llm/AutonomousDecisionAdapter.js";
 import { GrokLLMAdapter } from "./adapters/llm/GrokLLMAdapter.js";
@@ -6,11 +7,18 @@ import { AgentOrchestrator } from "./application/AgentOrchestrator.js";
 import { ReportExporter } from "./infrastructure/ReportExporter.js";
 
 async function main() {
+  // Soporte para pasar la ruta de un caso de prueba por argumento CLI
+  const customFilePath = process.argv[2];
+  const targetJsonPath = customFilePath
+    ? path.resolve(process.cwd(), customFilePath)
+    : path.resolve(process.cwd(), "data", "transactions.json");
+
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
   console.log("\x1b[1m\x1b[33m%s\x1b[0m", "🚀 FINANIA — COPILOTO FINANCIERO (AUDITORÍA STRICTA)");
-  console.log("\x1b[36m%s\x1b[0m", "==================================================\n");
+  console.log("\x1b[36m%s\x1b[0m", "==================================================");
+  console.log(`📂 Archivo de Transacciones: \x1b[35m${path.basename(targetJsonPath)}\x1b[0m\n`);
 
-  const dataAdapter = new JsonFileFinancialAdapter();
+  const dataAdapter = new JsonFileFinancialAdapter(targetJsonPath);
 
   const useRealLLM = process.env.LLM_API_KEY && process.env.LLM_API_KEY !== "pk_placeholder";
   

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "c-1",
+    "amount": 8500,
+    "type": "INCOME",
+    "category": "Ventas Corporativas",
+    "description": "Venta al por mayor a cliente corporativo",
+    "date": "2026-10-01"
+  },
+  {
+    "id": "c-2",
+    "amount": 6200,
+    "type": "INCOME",
+    "category": "Ventas Mostrador",
+    "description": "Ventas al por menor semana 1",
+    "date": "2026-10-02"
+  },
+  {
+    "id": "c-3",
+    "amount": 3500,
+    "type": "EXPENSE",
+    "category": "Proveedores",
+    "description": "Compra de inventario de alta rotación",
+    "date": "2026-10-03"
+  },
+  {
+    "id": "c-4",
+    "amount": 1200,
+    "type": "EXPENSE",
+    "category": "Nómina",
+    "description": "Pago a personal operativo",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "c-5",
+    "amount": 600,
+    "type": "EXPENSE",
+    "category": "Servicios",
+    "description": "Internet y telefonía empresarial",
+    "date": "2026-10-05"
+  }
+]

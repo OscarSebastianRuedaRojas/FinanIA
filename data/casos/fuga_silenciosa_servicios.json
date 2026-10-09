@@ -1,0 +1,50 @@
+[
+  {
+    "id": "f-1",
+    "amount": 5000,
+    "type": "INCOME",
+    "category": "Ventas",
+    "description": "Ingresos por ventas del mes",
+    "date": "2026-10-01"
+  },
+  {
+    "id": "f-2",
+    "amount": 1500,
+    "type": "EXPENSE",
+    "category": "Proveedores",
+    "description": "Costo directo de mercadería",
+    "date": "2026-10-02"
+  },
+  {
+    "id": "f-3",
+    "amount": 950,
+    "type": "EXPENSE",
+    "category": "Gastos Hormiga",
+    "description": "Suscripción a software no utilizado",
+    "date": "2026-10-03"
+  },
+  {
+    "id": "f-4",
+    "amount": 800,
+    "type": "EXPENSE",
+    "category": "Gastos Hormiga",
+    "description": "Comidas y viáticos no presupuestados",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "f-5",
+    "amount": 750,
+    "type": "EXPENSE",
+    "category": "Gastos Hormiga",
+    "description": "Publicidad digital sin retorno de inversión",
+    "date": "2026-10-05"
+  },
+  {
+    "id": "f-6",
+    "amount": 600,
+    "type": "EXPENSE",
+    "category": "Gastos Hormiga",
+    "description": "Comisiones por transferencias bancarias no optimizadas",
+    "date": "2026-10-06"
+  }
+]
