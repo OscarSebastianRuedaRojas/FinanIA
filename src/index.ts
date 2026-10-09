@@ -3,11 +3,12 @@ import { JsonFileFinancialAdapter } from "./adapters/repository/JsonFileFinancia
 import { AutonomousDecisionAdapter } from "./adapters/llm/AutonomousDecisionAdapter.js";
 import { GrokLLMAdapter } from "./adapters/llm/GrokLLMAdapter.js";
 import { AgentOrchestrator } from "./application/AgentOrchestrator.js";
+import { ReportExporter } from "./infrastructure/ReportExporter.js";
 
 async function main() {
-  console.log("==================================================");
-  console.log("🚀 FINANIA — COPILOTO FINANCIERO (AUDITORÍA STRICTA)");
-  console.log("==================================================\n");
+  console.log("\x1b[36m%s\x1b[0m", "==================================================");
+  console.log("\x1b[1m\x1b[33m%s\x1b[0m", "🚀 FINANIA — COPILOTO FINANCIERO (AUDITORÍA STRICTA)");
+  console.log("\x1b[36m%s\x1b[0m", "==================================================\n");
 
   const dataAdapter = new JsonFileFinancialAdapter();
 
@@ -15,10 +16,10 @@ async function main() {
   
   let llmAdapter;
   if (useRealLLM) {
-    console.log("🌐 Conectando con LLM Real (Grok 4.7)...");
+    console.log("🌐 \x1b[32mConectando con LLM Real (Grok 4.7 @ https://api.reto.pltk.mx/v1)...\x1b[0m");
     llmAdapter = new GrokLLMAdapter();
   } else {
-    console.log("⚡ Usando Adaptador Mock Autónomo en memoria...");
+    console.log("⚡ \x1b[33mUsando Adaptador Mock Autónomo en memoria...\x1b[0m");
     llmAdapter = new AutonomousDecisionAdapter();
   }
 
@@ -26,29 +27,33 @@ async function main() {
 
   const { summary, recommendation } = await orchestrator.runAutonomousCycle();
 
-  console.log("\n--------------------------------------------------");
-  console.log("📌 DICTAMEN DE AUDITORÍA FINANCIERA");
-  console.log("--------------------------------------------------");
-  console.log(`Título: ${recommendation.title}`);
-  console.log(`Prioridad: ${recommendation.priority}`);
-  console.log(`Diagnóstico: ${recommendation.diagnosis}`);
-  console.log("\nAcciones Recomendadas:");
+  console.log("\n\x1b[36m%s\x1b[0m", "--------------------------------------------------");
+  console.log("\x1b[1m\x1b[31m%s\x1b[0m", "📌 DICTAMEN DE AUDITORÍA FINANCIERA");
+  console.log("\x1b[36m%s\x1b[0m", "--------------------------------------------------");
+  console.log(`\x1b[1mTítulo:\x1b[0m ${recommendation.title}`);
+  console.log(`\x1b[1mPrioridad:\x1b[0m \x1b[41m\x1b[37m ${recommendation.priority} \x1b[0m`);
+  console.log(`\x1b[1mDiagnóstico:\x1b[0m ${recommendation.diagnosis}`);
+  console.log("\n\x1b[1mAcciones Recomendadas:\x1b[0m");
   recommendation.actionPlan.forEach((action, idx) => {
-    console.log(`  ${idx + 1}. ${action}`);
+    console.log(`  \x1b[33m${idx + 1}.\x1b[0m ${action}`);
   });
-  console.log(`\nImpacto Estimado: ${recommendation.estimatedImpact}`);
+  console.log(`\n\x1b[1mImpacto Estimado:\x1b[0m \x1b[32m${recommendation.estimatedImpact}\x1b[0m`);
 
   if (recommendation.telemetry) {
-    console.log("\n--------------------------------------------------");
-    console.log("⏱️ TELEMETRÍA DE EJECUCIÓN (SEMANA 3 PREVIEW)");
-    console.log("--------------------------------------------------");
-    console.log(`Modelo: ${recommendation.telemetry.model}`);
-    console.log(`Tiempo de respuesta: ${recommendation.telemetry.executionTimeMs} ms`);
+    console.log("\n\x1b[36m%s\x1b[0m", "--------------------------------------------------");
+    console.log("\x1b[1m\x1b[35m%s\x1b[0m", "⏱️ TELEMETRÍA DE EJECUCIÓN (SEMANA 3 PREVIEW)");
+    console.log("\x1b[36m%s\x1b[0m", "--------------------------------------------------");
+    console.log(`Modelo: \x1b[33m${recommendation.telemetry.model}\x1b[0m`);
+    console.log(`Tiempo de respuesta: \x1b[32m${recommendation.telemetry.executionTimeMs} ms\x1b[0m`);
     console.log(`Prompt Tokens: ${recommendation.telemetry.promptTokens}`);
     console.log(`Completion Tokens: ${recommendation.telemetry.completionTokens}`);
-    console.log(`Total Tokens: ${recommendation.telemetry.totalTokens}`);
+    console.log(`Total Tokens: \x1b[1m${recommendation.telemetry.totalTokens}\x1b[0m`);
   }
-  console.log("--------------------------------------------------\n");
+
+  // Exportar el informe a Markdown automáticamente
+  const reportPath = await ReportExporter.exportToMarkdown(summary, recommendation);
+  console.log("\n\x1b[32m%s\x1b[0m", `📄 Informe exportado automáticamente en: ${reportPath}`);
+  console.log("\x1b[36m%s\x1b[0m", "--------------------------------------------------\n");
 }
 
 main().catch((err) => {
