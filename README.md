@@ -54,8 +54,8 @@ src/
 
 ### 2. Clonar el Repositorio e Instalar Dependencias
 ```bash
-git clone <URL_DE_TU_REPOSITORIO>
-cd Platica
+git clone https://github.com/OscarSebastianRuedaRojas/FinanIA.git
+cd FinanIA
 npm install
 ```
 
