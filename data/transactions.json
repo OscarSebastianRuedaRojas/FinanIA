@@ -1,0 +1,42 @@
+[
+  {
+    "id": "tx-1",
+    "amount": 1500,
+    "type": "INCOME",
+    "category": "Ventas Diarias",
+    "description": "Ventas de abarrotes lunes",
+    "date": "2026-10-01"
+  },
+  {
+    "id": "tx-2",
+    "amount": 1800,
+    "type": "INCOME",
+    "category": "Ventas Diarias",
+    "description": "Ventas de abarrotes martes",
+    "date": "2026-10-02"
+  },
+  {
+    "id": "tx-3",
+    "amount": 2200,
+    "type": "EXPENSE",
+    "category": "Proveedores",
+    "description": "Pago a distribuidora de lácteos",
+    "date": "2026-10-03"
+  },
+  {
+    "id": "tx-4",
+    "amount": 800,
+    "type": "EXPENSE",
+    "category": "Servicios",
+    "description": "Pago de luz refrigeradores",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "tx-5",
+    "amount": 350,
+    "type": "EXPENSE",
+    "category": "Mantenimiento",
+    "description": "Reparación estante",
+    "date": "2026-10-05"
+  }
+]
