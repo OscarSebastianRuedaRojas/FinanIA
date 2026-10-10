@@ -1,42 +1,130 @@
 [
   {
-    "id": "tx-1",
-    "amount": 1500,
+    "id": "tx-101",
+    "amount": 8500,
     "type": "INCOME",
-    "category": "Ventas Diarias",
-    "description": "Ventas de abarrotes lunes",
+    "category": "Contratos de Retención",
+    "description": "Retención mensual Cliente Alpha Corp",
+    "date": "2026-09-01"
+  },
+  {
+    "id": "tx-102",
+    "amount": 4200,
+    "type": "INCOME",
+    "category": "Consultoría y Servicios",
+    "description": "Proyecto auditoría de software",
+    "date": "2026-09-05"
+  },
+  {
+    "id": "tx-103",
+    "amount": 2800,
+    "type": "EXPENSE",
+    "category": "Nómina y Honorarios",
+    "description": "Honorarios equipo desarrollo Frontend",
+    "date": "2026-09-10"
+  },
+  {
+    "id": "tx-104",
+    "amount": 1200,
+    "type": "EXPENSE",
+    "category": "Infraestructura Cloud",
+    "description": "Servidores AWS y base de datos gestionada",
+    "date": "2026-09-12"
+  },
+  {
+    "id": "tx-105",
+    "amount": 650,
+    "type": "EXPENSE",
+    "category": "Software y Licencias",
+    "description": "Suscripciones GitHub Enterprise y Figma",
+    "date": "2026-09-15"
+  },
+  {
+    "id": "tx-106",
+    "amount": 9500,
+    "type": "INCOME",
+    "category": "Contratos de Retención",
+    "description": "Facturación mensual Beta Solutions",
+    "date": "2026-09-20"
+  },
+  {
+    "id": "tx-107",
+    "amount": 1800,
+    "type": "EXPENSE",
+    "category": "Alquiler y Oficina",
+    "description": "Espacio de Coworking Oficina Central",
+    "date": "2026-09-25"
+  },
+  {
+    "id": "tx-108",
+    "amount": 12000,
+    "type": "INCOME",
+    "category": "Ventas Directas",
+    "description": "Licencia anual software SaaS módulo ERP",
     "date": "2026-10-01"
   },
   {
-    "id": "tx-2",
-    "amount": 1800,
-    "type": "INCOME",
-    "category": "Ventas Diarias",
-    "description": "Ventas de abarrotes martes",
+    "id": "tx-109",
+    "amount": 3500,
+    "type": "EXPENSE",
+    "category": "Nómina y Honorarios",
+    "description": "Honorarios equipo desarrollo Backend",
     "date": "2026-10-02"
   },
   {
-    "id": "tx-3",
-    "amount": 2200,
+    "id": "tx-110",
+    "amount": 1400,
     "type": "EXPENSE",
-    "category": "Proveedores",
-    "description": "Pago a distribuidora de lácteos",
+    "category": "Infraestructura Cloud",
+    "description": "Servidores AWS y cluster Kubernetes",
     "date": "2026-10-03"
   },
   {
-    "id": "tx-4",
-    "amount": 800,
+    "id": "tx-111",
+    "amount": 550,
     "type": "EXPENSE",
-    "category": "Servicios",
-    "description": "Pago de luz refrigeradores",
+    "category": "Marketing y Publicidad",
+    "description": "Campaña Google Ads & LinkedIn Lead Gen",
     "date": "2026-10-04"
   },
   {
-    "id": "tx-5",
-    "amount": 350,
-    "type": "EXPENSE",
-    "category": "Mantenimiento",
-    "description": "Reparación estante",
+    "id": "tx-112",
+    "amount": 6800,
+    "type": "INCOME",
+    "category": "Consultoría y Servicios",
+    "description": "Implementación API personalizada",
     "date": "2026-10-05"
+  },
+  {
+    "id": "tx-113",
+    "amount": 1500,
+    "type": "EXPENSE",
+    "category": "Software y Licencias",
+    "description": "Licencias anuales CRM Hubspot",
+    "date": "2026-10-06"
+  },
+  {
+    "id": "tx-114",
+    "amount": 7800,
+    "type": "EXPENSE",
+    "category": "Equipamiento y Hardware",
+    "description": "Compra de Laptops Mac Studio para nuevos devs (Gasto Anómalo Unico)",
+    "date": "2026-10-07"
+  },
+  {
+    "id": "tx-115",
+    "amount": 11000,
+    "type": "INCOME",
+    "category": "Contratos de Retención",
+    "description": "Cobro trimestral anticipado Gamma Tech",
+    "date": "2026-10-08"
+  },
+  {
+    "id": "tx-116",
+    "amount": 1800,
+    "type": "EXPENSE",
+    "category": "Alquiler y Oficina",
+    "description": "Espacio de Coworking Octubre",
+    "date": "2026-10-09"
   }
 ]

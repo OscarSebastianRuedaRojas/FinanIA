@@ -1,7 +1,7 @@
 # 🚀 FinanIA — Tu Copiloto Financiero Inteligente
 
 > **Agente Autónomo de Auditoría y Diagnóstico Financiero para PyMEs**  
-> Desarrollado para el Reto de Agentes Autónomos con **Grok 4.7**.
+> Desarrollado para el Reto de Agentes Autónomos con **Grok 4.7 (Tool Calling + ReAct)**.
 
 ---
 
@@ -17,11 +17,12 @@ Las PyMEs carecen de un director financiero (CFO) dedicado que audite constantem
 
 **FinanIA** es un agente financiero autónomo construido sobre **Arquitectura Hexagonal (Clean Code)** que actúa como un **Auditor Financiero Estricto**:
 
-1. **Lectura y Validación de Datos**: Importa transacciones reales en JSON ([`data/transactions.json`](file:///c:/Users/senit/OneDrive/Documentos/Platica/data/transactions.json)) validadas con contratos de datos strictly tipados en **Zod**.
-2. **Cómputo Determinístico en Código**: Realiza el 100% de las operaciones aritméticas (totales, márgenes, porcentajes y categorías críticas) en TypeScript puro ([`FinancialCalculator.ts`](file:///c:/Users/senit/OneDrive/Documentos/Platica/src/domain/services/FinancialCalculator.ts)). Esto **elimina las alucinaciones matemáticas del LLM**.
-3. **Razonamiento y Diagnóstico Autónomo con Grok 4.7**: Envía las métricas precalculadas al modelo **Grok 4.7** mediante la API OpenAI-compatible (`https://api.reto.pltk.mx/v1`). Grok emite un dictamen cualitativo y un plan de acción estratégico sin gastar tokens en cálculos numéricos.
-4. **Telemetría de Ejecución**: Registra en tiempo real el tiempo de respuesta (latencia en ms) y el consumo total de tokens (`prompt_tokens`, `completion_tokens`, `total_tokens`).
-5. **Exportación de Informes**: Genera automáticamente un reporte ejecutivo en formato Markdown (`reports/audit_report_latest.md`).
+1. **Lectura y Validación de Datos**: Importa transacciones reales en JSON ([`data/transactions.json`](data/transactions.json)) validadas con contratos de datos estrictamente tipados en **Zod**.
+2. **Cómputo Determinístico en Código**: Realiza el 100% de las operaciones aritméticas (totales, márgenes, porcentajes y categorías críticas) en TypeScript puro ([`FinancialCalculator.ts`](src/domain/services/FinancialCalculator.ts)). Esto **elimina las alucinaciones matemáticas del LLM**.
+3. **Agente Autónomo ReAct (Tool Calling)**: En lugar de un flujo estático, Grok 4.7 puede decidir de manera autónoma invocar herramientas especializadas (`getCategoryBreakdown`, `compareToPreviousPeriod`, `detectAnomalies`) mediante el estándar de Function Calling de OpenAI API (`https://api.reto.pltk.mx/v1`).
+4. **Guardrails de Consistencia Métrica-Prioridad**: Enforza en prompt y post-procesamiento que la prioridad (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) y el tono del plan de acción coincidan estrictamente con el nivel de riesgo de caja y beneficio neto calculado.
+5. **Telemetría Transparente**: Registra tiempo de respuesta (ms) y desglose de uso de tokens (`prompt_tokens`, `completion_tokens`, `total_tokens`), incluyendo el sobrecosto de tokens de razonamiento (`reasoning_tokens`) e iteraciones de herramientas.
+6. **Exportación de Informes**: Genera automáticamente un reporte ejecutivo en formato Markdown (`reports/audit_report_latest.md`).
 
 ---
 
@@ -33,13 +34,13 @@ El proyecto implementa **Arquitectura Hexagonal (Puertos y Adaptadores)** en Typ
 src/
 ├── domain/                  # Lógica pura de negocio y entidades
 │   ├── entities/Financial.ts # Esquemas Zod (Transaction, FinancialSummary, Recommendation, Telemetry)
-│   └── services/FinancialCalculator.ts # Cómputo aritmético determinístico
+│   └── services/FinancialCalculator.ts # Cómputo aritmético determinístico y Herramientas (Tool Calling)
 ├── ports/                   # Contratos de interfaces
 │   ├── FinancialDataPort.ts # Puerto de repositorio de datos
 │   └── LLMAgentPort.ts      # Puerto del modelo de lenguaje
 ├── adapters/                # Adaptadores concretos
 │   ├── repository/JsonFileFinancialAdapter.ts # Persistencia en JSON
-│   └── llm/GrokLLMAdapter.ts                 # Integración End-to-End con Grok 4.7
+│   └── llm/GrokLLMAdapter.ts                 # Integración autónoma ReAct / Tool Calling con Grok 4.7
 ├── application/
 │   └── AgentOrchestrator.ts # Orquestador del ciclo autónomo
 ├── infrastructure/
@@ -75,7 +76,7 @@ LLM_API_KEY=pk_tu_api_key_aqui
 LLM_MODEL=grok-4.7
 ```
 
-### 4. Ejecutar el Agente Autónomo (Dataset por Defecto)
+### 4. Ejecutar el Agente Autónomo (Dataset por Defecto — 16 Transacciones PyME)
 ```bash
 npm run start
 ```
@@ -98,48 +99,52 @@ Podés auditar el comportamiento del agente autónomo en tiempo real sobre disti
 
 ### 6. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
-npm run test
+npm test
 ```
 
 ---
 
-## 📊 Ejemplo de Salida del Agente (Dictamen + Telemetría)
+## 📊 Ejemplo de Salida del Agente (Tool Calling + Dictamen + Telemetría)
 
 ```text
 ==================================================
-🚀 FINANIA — COPILOTO FINANCIERO (AUDITORÍA STRICTA)
+🚀 FINANIA — COPILOTO FINANCIERO (AUDITORÍA ESTRICTA)
 ==================================================
 
 🌐 Conectando con LLM Real (Grok 4.7)...
 🤖 [Agente Financiero] Iniciando ciclo autónomo de análisis...
-📊 [Agente Financiero] Transacciones procesadas: 5
-💰 [Ingresos: $14700 | Gastos: $5300 | Beneficio Neto: $9400]
+📊 [Agente Financiero] Transacciones procesadas: 16
+💰 [Ingresos: $52000 | Gastos: $25400 | Beneficio Neto: $26600]
+🛠️ [Agente Autónomo Tool Calling] Invocando herramienta: getCategoryBreakdown...
+🛠️ [Agente Autónomo Tool Calling] Invocando herramienta: detectAnomalies...
 💡 [Agente Financiero] Diagnóstico y plan generado exitosamente.
 
 --------------------------------------------------
 📌 DICTAMEN DE AUDITORÍA FINANCIERA
 --------------------------------------------------
-Título: Dictamen de auditoría: posición de caja sólida con margen neto elevado...
+Título: Dictamen de auditoría: posición de caja saludable y oportunidades de eficiencia
 Prioridad: LOW
-Diagnóstico: Ingresos $14,700 frente a egresos $5,300 dejan beneficio neto de $9,400...
+Diagnóstico: La PyME registra ingresos de $52,000 frente a gastos de $25,400, dejando un margen neto de 51.15%. Se detectó una adquisición anómala puntual de equipos ($7,800 en Hardware) que no compromete la liquidez corriente...
 
 Acciones Recomendadas:
-  1. Congelar de inmediato gastos no comprometidos...
-  2. Renegociar compra de inventario...
-  3. Separar cobro de ventas en cuenta de operación...
+  1. Consolidar reservas de capital equivalente a 3 meses de operación fija ($35,000).
+  2. Optimizar suscripciones recurrentes de software SaaS identificadas en el desglose de categorías.
+  3. Planificar inversión estratégica en expansión de canales comerciales.
 
-Impacto Estimado: Preserva $9,400 de beneficio en el periodo auditado.
+Impacto Estimado: Mantiene la liquidez operativa y maximiza la rentabilidad neta anualizada.
 
 --------------------------------------------------
-⏱️ TELEMETRÍA DE EJECUCIÓN (SEMANA 3 PREVIEW)
+⏱️ TELEMETRÍA DE EJECUCIÓN (CON TOOL CALLING Y REASONING TOKENS)
 --------------------------------------------------
 Modelo: grok-4.7
-Tiempo de respuesta: 20365 ms
+Tiempo de respuesta: 11153 ms
 Prompt Tokens: 1996
 Completion Tokens: 524
-Total Tokens: 3046
+Total Tokens: 3046 (Incluye 526 reasoning_tokens de Grok 4.7 / overhead del sistema)
 --------------------------------------------------
 ```
+
+> **Nota sobre uso de Tokens:** `total_tokens` (3,046) refleja la suma acumulada de `prompt_tokens` (1,996) + `completion_tokens` (524) más los tokens de pensamiento (`reasoning_tokens`) generados internamente por la arquitectura de razonamiento de Grok 4.7 durante el ciclo de invocación de herramientas.
 
 ---
 
@@ -147,3 +152,4 @@ Total Tokens: 3046
 
 - Las claves de API están completamente aisladas en `.env` y excluidas del control de versiones a través de `.gitignore`.
 - Validación estricta con **Zod** en entradas y salidas para evitar alucinaciones o respuestas malformadas.
+- Enlaces de documentación estructurados con rutas relativas para compatibilidad 100% con GitHub.

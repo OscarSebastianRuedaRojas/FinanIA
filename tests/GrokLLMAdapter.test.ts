@@ -49,5 +49,5 @@ describe("GrokLLMAdapter Integration Test", () => {
     expect(recommendation).toHaveProperty("diagnosis");
     expect(recommendation.priority).toMatch(/CRITICAL|HIGH|MEDIUM|LOW/);
     expect(recommendation.actionPlan.length).toBeGreaterThan(0);
-  }, 30000);
+  }, 60000);
 });
