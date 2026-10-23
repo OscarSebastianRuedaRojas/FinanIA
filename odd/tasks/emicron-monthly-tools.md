@@ -20,7 +20,7 @@ Assumptions (verified against the 2024 data, first rows): `VENTAS_MES_ANTERIOR` 
 | T1 | S2, S4, S5 | inline | done | RED: module missing, then "Otros costos" count; GREEN 5/5; real ingest 78,501 rows |
 | T2 | S2, S3 | inline | done | RED: missing modules; GREEN 8/8; real smoke: 2–174 ms per call, 568 department / 10,983 national peers |
 | T3 | S1, S3 | inline | done | RED: client injection/adapter missing; GREEN 24/24; live Grok run on EMICRON 7627474-1-1 called 3 monthly tools; start:quiebra still calls the 5 weekly tools; mock-mode output identical to main for 2 cases |
-| T4 | S4, S5 | inline | pending | — |
+| T4 | S4, S5 | inline | done | README section 6 (download, ingest, run, tools, errors, DANE citation); Node requirement raised to v22.13 for `node:sqlite`; structural readback |
 
 - T1: CSV ingestion → SQLite (`npm run data:emicron`), synthetic fixture tests.
 - T2: monthly data port + SQLite adapter + three monthly tools with typed args and error results.

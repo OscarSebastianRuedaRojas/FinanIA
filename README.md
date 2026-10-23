@@ -34,17 +34,25 @@ El proyecto implementa **Arquitectura Hexagonal (Puertos y Adaptadores)** en Typ
 src/
 ├── domain/                  # Lógica pura de negocio y entidades
 │   ├── entities/Financial.ts # Esquemas Zod (Transaction, FinancialSummary, Recommendation, Telemetry)
-│   └── services/FinancialCalculator.ts # Cómputo aritmético determinístico y Herramientas (Tool Calling)
+│   ├── entities/MicroBusiness.ts # Micronegocio EMICRON (perfil, cifras mensuales, líneas de costo/gasto)
+│   ├── services/FinancialCalculator.ts # Cómputo aritmético determinístico sobre transacciones
+│   └── services/MonthlyFinancialAnalyzer.ts # Márgenes, medianas y percentiles mensuales
 ├── ports/                   # Contratos de interfaces
-│   ├── FinancialDataPort.ts # Puerto de repositorio de datos
+│   ├── FinancialDataPort.ts # Puerto de repositorio de transacciones
+│   ├── MicroBusinessDataPort.ts # Puerto de datos reales de micronegocios
+│   ├── AgentToolPort.ts     # Contrato de herramientas: { ok, data } o { ok, error }
 │   └── LLMAgentPort.ts      # Puerto del modelo de lenguaje
 ├── adapters/                # Adaptadores concretos
-│   ├── repository/JsonFileFinancialAdapter.ts # Persistencia en JSON
+│   ├── repository/JsonFileFinancialAdapter.ts # Casos sintéticos en JSON
+│   ├── repository/SqliteMicroBusinessAdapter.ts # Consultas SQLite sobre EMICRON
+│   ├── repository/EmicronBusinessTransactionsAdapter.ts # Último mes del micronegocio como transacciones
 │   └── llm/GrokLLMAdapter.ts                 # Integración autónoma ReAct / Tool Calling con Grok 4.7
 ├── application/
-│   └── AgentOrchestrator.ts # Orquestador del ciclo autónomo
+│   ├── AgentOrchestrator.ts # Orquestador del ciclo autónomo
+│   └── tools/               # Herramientas semanales (JSON) y mensuales (EMICRON) con validación Zod
 ├── infrastructure/
-│   └── ReportExporter.ts    # Exportador de informes ejecutivos en Markdown
+│   ├── ReportExporter.ts    # Exportador de informes ejecutivos en Markdown
+│   └── emicron/             # Ingesta de los CSV del DANE a SQLite
 └── index.ts                 # Punto de entrada de la aplicación y CLI
 ```
 
@@ -53,7 +61,7 @@ src/
 ## 🚀 Guía de Instalación y Ejecución End-to-End
 
 ### 1. Requisitos Previos
-- Node.js v18 o superior
+- Node.js v22.13 o superior (usa el módulo nativo `node:sqlite`)
 - npm
 
 ### 2. Clonar el Repositorio e Instalar Dependencias
@@ -81,8 +89,8 @@ LLM_MODEL=grok-4.7
 npm run start
 ```
 
-### 5. Pruebas de Escenarios Financieros Dinámicos (Datasets de Auditoría)
-Podés auditar el comportamiento del agente autónomo en tiempo real sobre distintos contextos financieros reales:
+### 5. Pruebas de Escenarios Financieros Dinámicos (Datos Sintéticos — Herramientas Semanales)
+Podés auditar el comportamiento del agente autónomo sobre distintos escenarios financieros sintéticos. En estos casos el agente usa las herramientas semanales (flujo neto, saldo proyectado a 4 semanas, gastos fuera de patrón):
 
 - 🔴 **Caso 1: Quiebra Inminente** (Egresos muy superiores a ingresos):
   ```bash
@@ -97,7 +105,36 @@ Podés auditar el comportamiento del agente autónomo en tiempo real sobre disti
   npm run start:hormiga
   ```
 
-### 6. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 6. Auditar Micronegocios Reales de Colombia (DANE EMICRON — Herramientas Mensuales)
+El agente también audita micronegocios reales de la **Encuesta de Micronegocios (EMICRON) 2024** del DANE: 78.501 negocios con ventas, costos y gastos del último mes.
+
+1. Descargá desde [microdatos.dane.gov.co (catálogo 875)](https://microdatos.dane.gov.co/index.php/catalog/875/get-microdata) estos tres archivos y descomprimilos en `data/raw/emicron/`:
+   - `BDATOS-EMICRON-Modulo_Identificacion-2024.zip`
+   - `BDATOS-EMICRON-Modulo_Costos_Gastos_Activos-2024.zip`
+   - `BDATOS-EMICRON-Modulo_Ventas_Ingresos-2024.zip`
+2. Cargá los CSV en la base local `data/emicron.sqlite`:
+   ```bash
+   npm run data:emicron
+   ```
+3. Auditá un micronegocio por su ID (`DIRECTORIO-SECUENCIA_P-SECUENCIA_ENCUESTA`), o uno al azar si no pasás ID:
+   ```bash
+   npm run start:emicron -- 7627474-1-1
+   ```
+
+En este modo el agente decide cuándo invocar tres herramientas que consultan SQLite:
+
+| Herramienta | Qué hace |
+| :--- | :--- |
+| `getMonthlyStatement` | Estado de resultados del último mes: ventas, costos, gastos, impuestos, márgenes y peso de cada línea sobre las ventas |
+| `compareWithSectorPeers` | Margen operativo y ventas contra pares reales del mismo sector, en el departamento (`scope: "department"`) o en el país (`scope: "national"`) |
+| `getYearOverYearSales` | Ventas contra el mismo mes del año anterior y contra el promedio mensual del año anterior |
+
+Cada herramienta valida sus argumentos y, si algo falla, le devuelve al agente un error estructurado (`INVALID_ARGUMENTS`, `BUSINESS_NOT_FOUND`, `INSUFFICIENT_PEERS`, `DATA_SOURCE_ERROR`, `UNKNOWN_TOOL`) para que decida cómo seguir; por ejemplo, reintentar la comparación con `scope: "national"` cuando el departamento no tiene pares suficientes.
+
+> **Fuente: Departamento Administrativo Nacional de Estadística: www.dane.gov.co**
+> Los microdatos del DANE no se pueden redistribuir sin autorización escrita, por eso `data/raw/` y `data/emicron.sqlite` están en `.gitignore` y nunca se suben al repositorio. Los CSV de `tests/fixtures/emicron/` son sintéticos.
+
+### 7. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm test
 ```
