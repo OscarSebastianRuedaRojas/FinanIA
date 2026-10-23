@@ -8,6 +8,7 @@
     "start:quiebra": "tsx src/index.ts data/casos/quiebra_inminente.json",
     "start:saludable": "tsx src/index.ts data/casos/crecimiento_saludable.json",
     "start:hormiga": "tsx src/index.ts data/casos/fuga_silenciosa_servicios.json",
+    "data:emicron": "tsx src/infrastructure/emicron/ingestCli.ts",
     "dev": "tsx watch src/index.ts",
     "test": "vitest run"
   },

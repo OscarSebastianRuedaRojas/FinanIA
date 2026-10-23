@@ -8,3 +8,7 @@ dist/
 ROADMAP.md
 scratch/
 reports/
+
+# DANE EMICRON microdata: redistribution not allowed (Ley 1032 de 2006)
+data/raw/
+data/*.sqlite
