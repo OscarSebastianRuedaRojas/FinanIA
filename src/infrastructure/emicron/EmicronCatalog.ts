@@ -75,3 +75,6 @@ export const EXPENSE_LINES: Record<string, string> = {
   P3017_K: "Aseo, vigilancia y administración",
   P3017_L: "Otros pagos del proceso productivo",
 };
+
+// GASTOS_MES del DANE excluye licencias (P3017_I) e impuestos (P3017_J); se suman aparte
+export const TAX_AND_LICENSE_CATEGORIES = [EXPENSE_LINES.P3017_I, EXPENSE_LINES.P3017_J];

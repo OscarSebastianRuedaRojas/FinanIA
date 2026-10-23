@@ -23,10 +23,10 @@ describe("ingestEmicron", () => {
   it("debe unir los tres módulos por llave compuesta y omitir negocios incompletos", () => {
     const result = ingestEmicron(fixturesDir, dbPath);
 
-    expect(result.businesses).toBe(2);
+    expect(result.businesses).toBe(4);
     const db = new DatabaseSync(dbPath);
     const ids = db.prepare("SELECT id FROM businesses ORDER BY id").all().map((r) => r.id);
-    expect(ids).toEqual(["100-1-1", "200-1-1"]);
+    expect(ids).toEqual(["100-1-1", "200-1-1", "400-1-1", "500-1-1"]);
     db.close();
   });
 
@@ -83,10 +83,10 @@ describe("ingestEmicron", () => {
     ingestEmicron(fixturesDir, dbPath);
     const second = ingestEmicron(fixturesDir, dbPath);
 
-    expect(second.businesses).toBe(2);
+    expect(second.businesses).toBe(4);
     const db = new DatabaseSync(dbPath);
     const count = db.prepare("SELECT COUNT(*) AS n FROM financial_lines").get();
-    expect(count?.n).toBe(10);
+    expect(count?.n).toBe(14);
     db.close();
   });
 

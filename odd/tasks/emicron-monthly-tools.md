@@ -18,7 +18,7 @@ Assumptions (verified against the 2024 data, first rows): `VENTAS_MES_ANTERIOR` 
 | ID | Specs | Route | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | T1 | S2, S4, S5 | inline | done | RED: module missing, then "Otros costos" count; GREEN 5/5; real ingest 78,501 rows |
-| T2 | S2, S3 | inline | pending | — |
+| T2 | S2, S3 | inline | done | RED: missing modules; GREEN 8/8; real smoke: 2–174 ms per call, 568 department / 10,983 national peers |
 | T3 | S1, S3 | inline | pending | — |
 | T4 | S4, S5 | inline | pending | — |
 
