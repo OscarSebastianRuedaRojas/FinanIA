@@ -17,7 +17,7 @@ Branch: `feat/execution-log` (stacked on `feat/invoice-vision`) · Test runner: 
 | --- | --- | --- | --- | --- |
 | E1 | S1, S3, S4 | inline | done | RED: module missing; GREEN 6/6 |
 | E2 | S1 | inline | done | GREEN 2/2; RED confirmed by stashing the hooks (2 failed) |
-| E3 | S2, S4 | inline | pending | — |
+| E3 | S2, S4 | inline | done | RED: module missing; GREEN 3/3 (runner, redaction, report) |
 | E4 | S2 | inline | pending | — |
 | E5 | S5 | inline | pending | — |
 
