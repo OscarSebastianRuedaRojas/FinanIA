@@ -36,23 +36,29 @@ src/
 │   ├── entities/Financial.ts # Esquemas Zod (Transaction, FinancialSummary, Recommendation, Telemetry)
 │   ├── entities/MicroBusiness.ts # Micronegocio EMICRON (perfil, cifras mensuales, líneas de costo/gasto)
 │   ├── services/FinancialCalculator.ts # Cómputo aritmético determinístico sobre transacciones
-│   └── services/MonthlyFinancialAnalyzer.ts # Márgenes, medianas y percentiles mensuales
+│   ├── entities/Invoice.ts  # Esquema Zod de la extracción de facturas
+│   ├── services/MonthlyFinancialAnalyzer.ts # Márgenes, medianas y percentiles mensuales
+│   └── services/InvoiceMapper.ts # Factura extraída → Transaction
 ├── ports/                   # Contratos de interfaces
 │   ├── FinancialDataPort.ts # Puerto de repositorio de transacciones
 │   ├── MicroBusinessDataPort.ts # Puerto de datos reales de micronegocios
 │   ├── AgentToolPort.ts     # Contrato de herramientas: { ok, data } o { ok, error }
+│   ├── InvoiceScannerPort.ts # Contrato del escáner de facturas y sus códigos de error
 │   └── LLMAgentPort.ts      # Puerto del modelo de lenguaje
 ├── adapters/                # Adaptadores concretos
 │   ├── repository/JsonFileFinancialAdapter.ts # Casos sintéticos en JSON
 │   ├── repository/SqliteMicroBusinessAdapter.ts # Consultas SQLite sobre EMICRON
 │   ├── repository/EmicronBusinessTransactionsAdapter.ts # Último mes del micronegocio como transacciones
-│   └── llm/GrokLLMAdapter.ts                 # Integración autónoma ReAct / Tool Calling con Grok 4.7
+│   ├── llm/GrokLLMAdapter.ts                 # Integración autónoma ReAct / Tool Calling con Grok 4.7
+│   └── llm/GrokVisionAdapter.ts              # Lectura de facturas y recibos con Grok Vision
 ├── application/
 │   ├── AgentOrchestrator.ts # Orquestador del ciclo autónomo
+│   ├── ScanInvoiceUseCase.ts # Foto → extracción validada → transacción
 │   └── tools/               # Herramientas semanales (JSON) y mensuales (EMICRON) con validación Zod
 ├── infrastructure/
 │   ├── ReportExporter.ts    # Exportador de informes ejecutivos en Markdown
-│   └── emicron/             # Ingesta de los CSV del DANE a SQLite
+│   ├── emicron/             # Ingesta de los CSV del DANE a SQLite
+│   └── invoice/             # Validación de la imagen (formato, tamaño) antes de llamar a la API
 └── index.ts                 # Punto de entrada de la aplicación y CLI
 ```
 
@@ -134,7 +140,32 @@ Cada herramienta valida sus argumentos y, si algo falla, le devuelve al agente u
 > **Fuente: Departamento Administrativo Nacional de Estadística: www.dane.gov.co**
 > Los microdatos del DANE no se pueden redistribuir sin autorización escrita, por eso `data/raw/` y `data/emicron.sqlite` están en `.gitignore` y nunca se suben al repositorio. Los CSV de `tests/fixtures/emicron/` son sintéticos.
 
-### 7. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 7. Digitalizar Facturas y Recibos (Grok Vision)
+Sacale una foto (JPG o PNG, hasta 10 MB) a una factura o recibo y FinanIA la convierte en una transacción validada:
+
+```bash
+npm run scan:factura -- tests/fixtures/invoices/factura_sintetica.png
+```
+
+Por defecto solo muestra una vista previa. Para agregarla al dataset que audita el agente:
+
+```bash
+npm run scan:factura -- foto_factura.jpg --guardar data/transactions.json
+npm run start
+```
+
+Grok Vision extrae proveedor, NIT, número, fecha, moneda, total, impuestos, categoría y tipo. La respuesta se valida con Zod; si no cumple el esquema, el agente le explica a Grok qué falló y reintenta una vez. Los errores se informan con un código y el comando sale con 1:
+
+| Código | Cuándo |
+| :--- | :--- |
+| `FILE_NOT_FOUND` / `UNSUPPORTED_FILE` / `FILE_TOO_LARGE` | La imagen no existe, no es JPG/PNG real o pesa más de 10 MB (no se llama a la API) |
+| `NOT_AN_INVOICE` | La foto no es una factura ni un recibo |
+| `INVALID_EXTRACTION` | Grok no devolvió datos válidos ni después del reintento |
+| `VISION_API_ERROR` | La API no respondió tras 3 reintentos con backoff exponencial |
+
+> El monto se guarda tal como figura en la factura: la moneda se muestra en la extracción, pero no se convierte. La especificación completa está en [`specs/invoice-vision/`](specs/invoice-vision/spec.md).
+
+### 8. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm test
 ```
