@@ -8,16 +8,45 @@ import {
   Transaction,
   Telemetry,
 } from "../../domain/entities/Financial.js";
-import { FinancialCalculator } from "../../domain/services/FinancialCalculator.js";
+import { AgentTool, AgentToolset, ToolResult } from "../../ports/AgentToolPort.js";
+import { createTransactionToolset } from "../../application/tools/transactionTools.js";
+import { withExponentialBackoff } from "./exponentialBackoff.js";
+import { ExecutionObserver, LLMUsage } from "../../ports/ExecutionLogPort.js";
+
+// Subconjunto del cliente OpenAI que usa el adaptador (permite inyectar un cliente falso en tests)
+export type ChatCompletionsClient = {
+  chat: {
+    completions: {
+      create(
+        params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+      ): Promise<OpenAI.Chat.Completions.ChatCompletion>;
+    };
+  };
+};
+
+function parseArgsForLog(raw: string): unknown {
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return raw;
+  }
+}
 
 export class GrokLLMAdapter implements LLMAgentPort {
-  private client: OpenAI;
+  private client: ChatCompletionsClient;
   private model: string;
+  private observer?: ExecutionObserver;
 
-  constructor() {
+  constructor(options: { client?: ChatCompletionsClient; observer?: ExecutionObserver } = {}) {
+    this.observer = options.observer;
     const baseURL = process.env.LLM_BASE_URL || "https://api.reto.pltk.mx/v1";
     const apiKey = process.env.LLM_API_KEY;
     this.model = process.env.LLM_MODEL || "grok-4.7";
+
+    if (options.client) {
+      this.client = options.client;
+      return;
+    }
 
     if (!apiKey) {
       throw new Error("LLM_API_KEY no está configurada en las variables de entorno.");
@@ -31,17 +60,19 @@ export class GrokLLMAdapter implements LLMAgentPort {
 
   async evaluateFinancialStatus(
     summary: FinancialSummary,
-    recentTransactions: Transaction[]
+    recentTransactions: Transaction[],
+    toolset: AgentToolset = createTransactionToolset(recentTransactions)
   ): Promise<FinancialRecommendation> {
+    const toolList = toolset.tools.map((tool) => `   - ${tool.name}: ${tool.description}`).join("\n");
     const systemPrompt = `Eres FinanIA, un AGENTE AUDITOR FINANCIERO ESTRICTO e inteligente para PyMEs.
 Funcionas como un sistema autónomo ReAct con capacidad de llamar herramientas (Tool Calling).
 
 REGLAS DE ACTUACIÓN:
 1. Tenés acceso a herramientas de investigación profunda:
-   - getCategoryBreakdown: desglose detallado de ingresos y egresos por categoría.
-   - compareToPreviousPeriod: comparativa de rendimiento entre períodos.
-   - detectAnomalies: detección de gastos o movimientos anómalos.
+${toolList}
 2. Usá las herramientas cuando necesites profundizar antes de emitir tu dictamen final.
+   Cada herramienta responde {"ok": true, "data": ...} o {"ok": false, "error": {"code", "message"}}.
+   Si una herramienta falla, leé el código de error y decidí: corregir los argumentos, reintentar con otro alcance o continuar sin ese dato, aclarándolo en el diagnóstico.
 3. COINCIDENCIA OBLIGATORIA DE PRIORIDAD Y TONO CON MÉTRICAS:
    - Si el Nivel de Riesgo Evaluado es "LOW" y el beneficio neto es positivo: La prioridad del dictamen DEBE ser "LOW" o "MEDIUM". El plan de acción DEBE enfocarse en crecimiento, optimización de márgenes y reservas (NUNCA en pánico, congelamiento de emergencia ni quiebra).
    - Si el Nivel de Riesgo es "HIGH" o el beneficio neto es negativo: La prioridad DEBE ser "HIGH" o "CRITICAL" con plan de contención de crisis e inmovilización de gastos superfluos.
@@ -55,48 +86,10 @@ Formato Final Obligatorio JSON (sin markdown wrapping):
   "estimatedImpact": "Estimación del impacto económico en liquidez o márgenes"
 }`;
 
-    const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
-      {
-        type: "function",
-        function: {
-          name: "getWeeklyCashFlowAndAlerts",
-          description: "Evalúa el flujo neto semanal, saldo proyectado a 4 semanas y detecta gastos fuera de patrón / anomalías",
-          parameters: { type: "object", properties: {}, required: [] },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "getMonthlyDiagnosticAndTrend",
-          description: "Evalúa el diagnóstico mensual consolidado, márgenes de ganancia, categorías críticas y tendencias comparativas",
-          parameters: { type: "object", properties: {}, required: [] },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "getCategoryBreakdown",
-          description: "Obtiene el desglose porcentual detallado de ingresos y egresos por categoría",
-          parameters: { type: "object", properties: {}, required: [] },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "compareToPreviousPeriod",
-          description: "Compara las tendencias financieras entre el período previo y el período actual",
-          parameters: { type: "object", properties: {}, required: [] },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "detectAnomalies",
-          description: "Detecta transacciones con egresos anómalos o superiores al umbral promedio",
-          parameters: { type: "object", properties: {}, required: [] },
-        },
-      },
-    ];
+    const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = toolset.tools.map((tool) => ({
+      type: "function",
+      function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+    }));
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: systemPrompt },
@@ -112,7 +105,7 @@ Resumen inicial precalculado:
 - Nivel de Riesgo de Caja: ${summary.cashFlowRisk}
 - Categoría Principal de Gasto: ${summary.topExpenseCategory}
 
-Tenés herramientas semanales (flujo neto, saldo proyectado a 4 semanas, gastos fuera de patrón) y mensuales (márgenes, categorías críticas, tendencias). Investiga con ellas si lo consideras necesario y emite el dictamen en formato JSON estricto.`,
+${toolset.context} Investiga con las herramientas si lo consideras necesario y emite el dictamen en formato JSON estricto.`,
       },
     ];
 
@@ -126,7 +119,8 @@ Tenés herramientas semanales (flujo neto, saldo proyectado a 4 semanas, gastos 
 
     while (iterations < maxIterations) {
       iterations++;
-      const response = await this.executeWithExponentialBackoff(() =>
+      const callStart = performance.now();
+      const response = await withExponentialBackoff(() =>
         this.client.chat.completions.create({
           model: this.model,
           messages,
@@ -143,6 +137,14 @@ Tenés herramientas semanales (flujo neto, saldo proyectado a 4 semanas, gastos 
 
       const choice = response.choices[0];
       const message = choice.message;
+      this.observer?.llmCall({
+        kind: "agent",
+        iteration: iterations,
+        model: response.model || this.model,
+        latencyMs: Math.round(performance.now() - callStart),
+        usage: response.usage as LLMUsage | undefined,
+        toolCallsRequested: (message.tool_calls ?? []).map((call) => (call.type === "function" ? call.function.name : call.type)),
+      });
 
       if (message.tool_calls && message.tool_calls.length > 0) {
         messages.push(message);
@@ -151,18 +153,16 @@ Tenés herramientas semanales (flujo neto, saldo proyectado a 4 semanas, gastos 
           if (toolCall.type === "function") {
             const fnName = toolCall.function.name;
             console.log(`🛠️ [Agente Autónomo Tool Calling] Invocando herramienta: ${fnName}...`);
-            let toolResult: unknown = {};
-
-            if (fnName === "getWeeklyCashFlowAndAlerts") {
-              toolResult = FinancialCalculator.getWeeklyCashFlowAndAlerts(recentTransactions);
-            } else if (fnName === "getMonthlyDiagnosticAndTrend") {
-              toolResult = FinancialCalculator.getMonthlyDiagnosticAndTrend(recentTransactions);
-            } else if (fnName === "getCategoryBreakdown") {
-              toolResult = FinancialCalculator.getCategoryBreakdown(recentTransactions);
-            } else if (fnName === "compareToPreviousPeriod") {
-              toolResult = FinancialCalculator.compareToPreviousPeriod(recentTransactions);
-            } else if (fnName === "detectAnomalies") {
-              toolResult = FinancialCalculator.detectAnomalies(recentTransactions);
+            const toolStart = performance.now();
+            const toolResult = await this.runTool(toolset.tools, fnName, toolCall.function.arguments);
+            this.observer?.toolCall({
+              tool: fnName,
+              args: parseArgsForLog(toolCall.function.arguments),
+              durationMs: Math.round(performance.now() - toolStart),
+              result: toolResult,
+            });
+            if (!toolResult.ok) {
+              console.warn(`⚠️ [Tool Error] ${fnName} → ${toolResult.error.code}: ${toolResult.error.message}`);
             }
 
             messages.push({
@@ -236,26 +236,20 @@ Tenés herramientas semanales (flujo neto, saldo proyectado a 4 semanas, gastos 
     return schemaValidation.data;
   }
 
-  private async executeWithExponentialBackoff<T>(
-    fn: () => Promise<T>,
-    maxRetries = 3,
-    baseDelayMs = 1000
-  ): Promise<T> {
-    let lastError: unknown;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        return await fn();
-      } catch (err: any) {
-        lastError = err;
-        if (attempt === maxRetries) break;
-        const delay = Math.pow(2, attempt) * baseDelayMs + Math.random() * 500;
-        console.warn(
-          `⚠️ [Exponential Backoff] Reintento ${attempt + 1}/${maxRetries} tras error de API (${err?.message || err}). Esperando ${Math.round(delay)}ms...`
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
+  // Nunca lanza: los errores vuelven al LLM como resultado de la herramienta
+  private async runTool(tools: AgentTool[], name: string, rawArguments: string): Promise<ToolResult> {
+    const tool = tools.find((candidate) => candidate.name === name);
+    if (!tool) {
+      return { ok: false, error: { code: "UNKNOWN_TOOL", message: `La herramienta "${name}" no existe. Disponibles: ${tools.map((t) => t.name).join(", ")}.` } };
     }
-    throw lastError;
+    let args: unknown;
+    try {
+      args = rawArguments ? JSON.parse(rawArguments) : {};
+    } catch {
+      return { ok: false, error: { code: "INVALID_ARGUMENTS", message: `Los argumentos de ${name} no son JSON válido.` } };
+    }
+    return tool.execute(args);
   }
+
 }
 

@@ -5,27 +5,59 @@ import { AutonomousDecisionAdapter } from "./adapters/llm/AutonomousDecisionAdap
 import { GrokLLMAdapter } from "./adapters/llm/GrokLLMAdapter.js";
 import { AgentOrchestrator } from "./application/AgentOrchestrator.js";
 import { ReportExporter } from "./infrastructure/ReportExporter.js";
+import { FinancialDataPort } from "./ports/FinancialDataPort.js";
+import { AgentToolset } from "./ports/AgentToolPort.js";
+import { buildEmicronRun } from "./infrastructure/emicron/buildEmicronRun.js";
+import { ExecutionRecorder } from "./application/ExecutionRecorder.js";
+import { JsonlExecutionLog } from "./infrastructure/logging/JsonlExecutionLog.js";
 
 async function main() {
-  // Soporte para pasar la ruta de un caso de prueba por argumento CLI
-  const customFilePath = process.argv[2];
-  const targetJsonPath = customFilePath
-    ? path.resolve(process.cwd(), customFilePath)
-    : path.resolve(process.cwd(), "data", "transactions.json");
+  const emicronMode = process.argv[2] === "--emicron";
+  let dataAdapter: FinancialDataPort;
+  let toolset: AgentToolset | undefined;
+  let sourceLabel: string;
+  let sourceKind: string;
+  let runLabel: string;
+
+  if (emicronMode) {
+    const run = await buildEmicronRun(process.argv[3]);
+    dataAdapter = run.dataAdapter;
+    toolset = run.toolset;
+    sourceLabel = run.label;
+    sourceKind = "Fuente de datos";
+    runLabel = run.businessId;
+  } else {
+    // Soporte para pasar la ruta de un caso de prueba por argumento CLI
+    const customFilePath = process.argv[2];
+    const targetJsonPath = customFilePath
+      ? path.resolve(process.cwd(), customFilePath)
+      : path.resolve(process.cwd(), "data", "transactions.json");
+    dataAdapter = new JsonFileFinancialAdapter(targetJsonPath);
+    sourceLabel = path.basename(targetJsonPath);
+    sourceKind = "Archivo de Transacciones";
+    runLabel = sourceLabel;
+  }
 
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
   console.log("\x1b[1m\x1b[33m%s\x1b[0m", "🚀 FINANIA — COPILOTO FINANCIERO (AUDITORÍA STRICTA)");
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
-  console.log(`📂 Archivo de Transacciones: \x1b[35m${path.basename(targetJsonPath)}\x1b[0m\n`);
-
-  const dataAdapter = new JsonFileFinancialAdapter(targetJsonPath);
+  console.log(`📂 ${sourceKind}: \x1b[35m${sourceLabel}\x1b[0m\n`);
 
   const useRealLLM = process.env.LLM_API_KEY && process.env.LLM_API_KEY !== "pk_placeholder";
-  
+
+  // Cada auditoría queda en la bitácora local logs/executions.jsonl
+  const recorder = new ExecutionRecorder(new JsonlExecutionLog(), {
+    runId: `cli-${Date.now()}`,
+    source: emicronMode ? "emicron" : "json",
+    label: runLabel,
+    redactResult: emicronMode,
+  });
+  recorder.start();
+
   let llmAdapter;
   if (useRealLLM) {
     console.log("🌐 \x1b[32mConectando con LLM Real (Grok 4.7 @ https://api.reto.pltk.mx/v1)...\x1b[0m");
-    llmAdapter = new GrokLLMAdapter();
+    llmAdapter = new GrokLLMAdapter({ observer: recorder });
   } else {
     console.log("⚡ \x1b[33mUsando Adaptador Mock Autónomo en memoria...\x1b[0m");
     llmAdapter = new AutonomousDecisionAdapter();
@@ -33,7 +65,15 @@ async function main() {
 
   const orchestrator = new AgentOrchestrator(dataAdapter, llmAdapter);
 
-  const { summary, recommendation } = await orchestrator.runAutonomousCycle();
+  let cycle;
+  try {
+    cycle = await orchestrator.runAutonomousCycle(toolset);
+  } catch (error: any) {
+    recorder.finish({ status: "error", error: { message: error?.message ?? String(error) } });
+    throw error;
+  }
+  const { summary, recommendation } = cycle;
+  recorder.finish({ status: "success", result: recommendation });
 
   console.log("\n\x1b[36m%s\x1b[0m", "--------------------------------------------------");
   console.log("\x1b[1m\x1b[31m%s\x1b[0m", "📌 DICTAMEN DE AUDITORÍA FINANCIERA");
@@ -56,6 +96,10 @@ async function main() {
     console.log(`Prompt Tokens: ${recommendation.telemetry.promptTokens}`);
     console.log(`Completion Tokens: ${recommendation.telemetry.completionTokens}`);
     console.log(`Total Tokens: \x1b[1m${recommendation.telemetry.totalTokens}\x1b[0m`);
+  }
+
+  if (emicronMode) {
+    console.log("\nFuente: Departamento Administrativo Nacional de Estadística: www.dane.gov.co");
   }
 
   // Exportar el informe a Markdown automáticamente
