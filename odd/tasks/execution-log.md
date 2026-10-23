@@ -18,8 +18,8 @@ Branch: `feat/execution-log` (stacked on `feat/invoice-vision`) · Test runner: 
 | E1 | S1, S3, S4 | inline | done | RED: module missing; GREEN 6/6 |
 | E2 | S1 | inline | done | GREEN 2/2; RED confirmed by stashing the hooks (2 failed) |
 | E3 | S2, S4 | inline | done | RED: module missing; GREEN 3/3 (runner, redaction, report) |
-| E4 | S2 | inline | pending | — |
-| E5 | S5 | inline | pending | — |
+| E4 | S2 | inline | done | `npm run bitacora:s2`: 10/10 validated, 53,796 tokens, $0.117354 USD; E08 recovered from INSUFFICIENT_PEERS with scope national; no EMICRON data fields in evidence |
+| E5 | S5 | inline | done | RED 2 failed → GREEN; suite 69/69 |
 
 - E1: `ExecutionLogPort`, JSONL adapter, `ExecutionRecorder` (totals, cost, redaction).
 - E2: observer hooks in `GrokLLMAdapter` (LLM + tool calls) and `GrokVisionAdapter`.

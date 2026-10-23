@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { ExecutionEvent, ExecutionLogPort } from "../../ports/ExecutionLogPort.js";
 
-export const DEFAULT_EXECUTION_LOG_PATH = path.resolve(process.cwd(), "logs", "executions.jsonl");
+export const DEFAULT_EXECUTION_LOG_PATH =
+  process.env.EXECUTION_LOG_PATH || path.resolve(process.cwd(), "logs", "executions.jsonl");
 
 // Bitácora en JSON Lines: un evento por línea, solo se agregan líneas (append-only)
 export class JsonlExecutionLog implements ExecutionLogPort {

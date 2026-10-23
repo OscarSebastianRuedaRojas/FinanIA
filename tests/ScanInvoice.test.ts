@@ -145,3 +145,40 @@ describe("CLI scan:factura", () => {
     expect(output).not.toMatch(/at .+\.ts:\d+/);
   });
 }, 60000);
+
+describe("Bitácora de los CLI", () => {
+  it("scan:factura debe registrar la ejecución fallida en EXECUTION_LOG_PATH", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-log-"));
+    const logPath = path.join(tmpDir, "executions.jsonl");
+    try {
+      await run(process.execPath, [path.resolve(root, "node_modules", "tsx", "dist", "cli.mjs"), "src/scanInvoice.ts", "package.json"], {
+        cwd: root,
+        env: { ...process.env, LLM_API_KEY: "pk_placeholder", EXECUTION_LOG_PATH: logPath },
+      }).catch(() => undefined);
+
+      const events = fs.readFileSync(logPath, "utf-8").trim().split("\n").map((line) => JSON.parse(line));
+      expect(events.map((e) => e.type)).toEqual(["run_started", "run_finished"]);
+      expect(events[0]).toMatchObject({ source: "invoice", label: "package.json" });
+      expect(events[1]).toMatchObject({ status: "error", error: { code: "UNSUPPORTED_FILE" } });
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  }, 60000);
+
+  it("npm start debe registrar la auditoría en EXECUTION_LOG_PATH", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-log-"));
+    const logPath = path.join(tmpDir, "executions.jsonl");
+    try {
+      await run(process.execPath, [path.resolve(root, "node_modules", "tsx", "dist", "cli.mjs"), "src/index.ts", "data/casos/quiebra_inminente.json"], {
+        cwd: root,
+        env: { ...process.env, LLM_API_KEY: "pk_placeholder", EXECUTION_LOG_PATH: logPath },
+      });
+
+      const events = fs.readFileSync(logPath, "utf-8").trim().split("\n").map((line) => JSON.parse(line));
+      expect(events.map((e) => e.type)).toEqual(["run_started", "run_finished"]);
+      expect(events[1]).toMatchObject({ source: "json", label: "quiebra_inminente.json", status: "success", result: { priority: "CRITICAL" } });
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  }, 60000);
+});

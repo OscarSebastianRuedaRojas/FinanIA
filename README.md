@@ -165,7 +165,26 @@ Grok Vision extrae proveedor, NIT, número, fecha, moneda, total, impuestos, cat
 
 > El monto se guarda tal como figura en la factura: la moneda se muestra en la extracción, pero no se convierte. La especificación completa está en [`specs/invoice-vision/`](specs/invoice-vision/spec.md).
 
-### 8. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 8. Bitácora de Ejecuciones y las 10 Ejecuciones Validadas (S2)
+Cada ejecución del agente queda registrada en `logs/executions.jsonl` (JSON Lines, una línea por evento):
+
+| Evento | Qué guarda |
+| :--- | :--- |
+| `run_started` | ID de la ejecución, fuente (`json`, `emicron`, `invoice`) y entrada |
+| `llm_call` | Modelo, latencia, tokens de entrada / salida / razonamiento / caché y costo en USD (`usage.cost_in_usd_ticks`, 1 USD = 10^10 ticks) |
+| `tool_call` | Herramienta, argumentos, `ok` o código de error y duración |
+| `run_finished` | Estado final, duración, totales de tokens y costo, y resultado |
+| `run_validated` | Chequeos de validación de la ejecución |
+
+Para correr las 10 ejecuciones validadas contra Grok (casos sintéticos, micronegocios reales del DANE y facturas):
+
+```bash
+npm run bitacora:s2
+```
+
+La evidencia queda en [`docs/bitacora/s2-ejecuciones.md`](docs/bitacora/s2-ejecuciones.md) (resumen) y [`docs/bitacora/s2-ejecuciones.jsonl`](docs/bitacora/s2-ejecuciones.jsonl) (bitácora completa). En los casos EMICRON la bitácora no guarda el texto del dictamen ni los datos que devuelven las herramientas, por la licencia del DANE.
+
+### 9. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm test
 ```

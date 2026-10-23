@@ -5,6 +5,8 @@ import { JsonFileFinancialAdapter } from "./adapters/repository/JsonFileFinancia
 import { ScanInvoiceUseCase } from "./application/ScanInvoiceUseCase.js";
 import { readInvoiceImage } from "./infrastructure/invoice/readInvoiceImage.js";
 import { InvoiceScanError, InvoiceScannerPort } from "./ports/InvoiceScannerPort.js";
+import { ExecutionRecorder } from "./application/ExecutionRecorder.js";
+import { JsonlExecutionLog } from "./infrastructure/logging/JsonlExecutionLog.js";
 
 const USAGE = "Uso: npm run scan:factura -- <imagen> [--guardar <dataset.json>]";
 
@@ -27,10 +29,18 @@ async function main(): Promise<number> {
     return 1;
   }
 
+  // Cada escaneo queda en la bitácora local logs/executions.jsonl
+  const recorder = new ExecutionRecorder(new JsonlExecutionLog(), {
+    runId: `cli-${Date.now()}`,
+    source: "invoice",
+    label: path.basename(imagePath),
+  });
+  recorder.start();
+
   // El scanner se crea al primer uso: un archivo inválido falla antes de exigir la API key
   let scanner: GrokVisionAdapter | undefined;
   const lazyScanner: InvoiceScannerPort = {
-    scan: (image) => (scanner ??= new GrokVisionAdapter()).scan(image),
+    scan: (image) => (scanner ??= new GrokVisionAdapter({ observer: recorder })).scan(image),
   };
 
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
@@ -45,6 +55,7 @@ async function main(): Promise<number> {
       repository
     );
     const { extraction, transaction, telemetry } = result;
+    recorder.finish({ status: "success", result: { extraction, transaction, saved: result.saved } });
 
     console.log("\x1b[1m📄 Datos extraídos\x1b[0m");
     console.log(`  Proveedor: ${extraction.vendorName}${extraction.vendorTaxId ? ` (NIT ${extraction.vendorTaxId})` : ""}`);
@@ -66,6 +77,10 @@ async function main(): Promise<number> {
     );
     return 0;
   } catch (error: any) {
+    recorder.finish({
+      status: "error",
+      error: { ...(error instanceof InvoiceScanError ? { code: error.code } : {}), message: error?.message ?? String(error) },
+    });
     if (error instanceof InvoiceScanError) {
       console.error(`\x1b[31m❌ ${error.code}: ${error.message}\x1b[0m`);
     } else {
