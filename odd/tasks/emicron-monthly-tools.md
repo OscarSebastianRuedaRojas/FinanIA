@@ -19,7 +19,7 @@ Assumptions (verified against the 2024 data, first rows): `VENTAS_MES_ANTERIOR` 
 | --- | --- | --- | --- | --- |
 | T1 | S2, S4, S5 | inline | done | RED: module missing, then "Otros costos" count; GREEN 5/5; real ingest 78,501 rows |
 | T2 | S2, S3 | inline | done | RED: missing modules; GREEN 8/8; real smoke: 2–174 ms per call, 568 department / 10,983 national peers |
-| T3 | S1, S3 | inline | pending | — |
+| T3 | S1, S3 | inline | done | RED: client injection/adapter missing; GREEN 24/24; live Grok run on EMICRON 7627474-1-1 called 3 monthly tools; start:quiebra still calls the 5 weekly tools; mock-mode output identical to main for 2 cases |
 | T4 | S4, S5 | inline | pending | — |
 
 - T1: CSV ingestion → SQLite (`npm run data:emicron`), synthetic fixture tests.
@@ -35,3 +35,4 @@ Route evidence: no Writer trigger (units depend on each other, no parallelism); 
 - L2: Earlier in the session the user chose EMICRON ("Sí, vamos con EMICRON. Verificá variables y licencia y proponé cómo integrarlo.") and authorized downloading the three ZIP files to `data/raw/emicron/`.
 - L3: Downloaded files contain CSV (comma-separated, ASCII, quoted empty strings), DTA and SAV per module; 78,501 rows each. `GRUPOS12` (CIIU Rev. 4, 12 groups) and `COD_DEPTO` live in Identificación; `MES_REF` is the survey reference month name.
 - L4: Real-data checks: every `COD_DEPTO` maps to a department name; `GASTOS_MES` excludes `P3017_I` (licenses) and `P3017_J` (taxes), and still differs from the line sum in 660 rows (0.8%, DANE edits) → DANE totals drive the summary, lines drive the breakdown. `P3056_E` holds other costs and is ingested as "Otros costos".
+- L5: Tool results reaching the LLM are now wrapped as `{ ok, data }` / `{ ok, error }` for weekly tools too (S3); the tool data itself is unchanged. The EMICRON summary is built from the line items, so for the 0.8% of businesses where DANE totals differ from the lines the summary and `getMonthlyStatement` can disagree slightly. Known gap: when the loop hits 5 iterations without a final answer the dictamen falls back to defaults (pre-existing behavior, not changed here).

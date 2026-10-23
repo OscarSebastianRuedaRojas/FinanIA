@@ -5,23 +5,68 @@ import { AutonomousDecisionAdapter } from "./adapters/llm/AutonomousDecisionAdap
 import { GrokLLMAdapter } from "./adapters/llm/GrokLLMAdapter.js";
 import { AgentOrchestrator } from "./application/AgentOrchestrator.js";
 import { ReportExporter } from "./infrastructure/ReportExporter.js";
+import { FinancialDataPort } from "./ports/FinancialDataPort.js";
+import { AgentToolset } from "./ports/AgentToolPort.js";
+import { SqliteMicroBusinessAdapter } from "./adapters/repository/SqliteMicroBusinessAdapter.js";
+import { EmicronBusinessTransactionsAdapter } from "./adapters/repository/EmicronBusinessTransactionsAdapter.js";
+import { createMonthlyTools } from "./application/tools/monthlyTools.js";
+
+const EMICRON_DB_PATH = path.resolve(process.cwd(), "data", "emicron.sqlite");
+
+// Modo EMICRON: micronegocio real del DANE con herramientas mensuales (id opcional, si falta se elige al azar)
+async function buildEmicronRun(
+  requestedId?: string
+): Promise<{ dataAdapter: FinancialDataPort; toolset: AgentToolset; label: string }> {
+  const port = new SqliteMicroBusinessAdapter(EMICRON_DB_PATH);
+  const businessId = requestedId ?? (await port.getRandomBusinessId());
+  if (!businessId) {
+    throw new Error('La base EMICRON está vacía. Ejecutá "npm run data:emicron".');
+  }
+  const profile = await port.getProfile(businessId);
+  if (!profile) {
+    throw new Error(`No existe el micronegocio "${businessId}" en la base EMICRON.`);
+  }
+  return {
+    dataAdapter: new EmicronBusinessTransactionsAdapter(port, businessId),
+    label: `EMICRON ${businessId} — ${profile.sectorName} (${profile.departmentName})`,
+    toolset: {
+      tools: createMonthlyTools(port),
+      context: `Auditás el micronegocio real "${businessId}" (${profile.sectorName}, ${profile.departmentName}) de la Encuesta de Micronegocios del DANE (EMICRON 2024). Las cifras están en pesos colombianos y corresponden al mes anterior a ${profile.referenceMonth}. Usá businessId "${businessId}" en las herramientas mensuales.`,
+    },
+  };
+}
 
 async function main() {
-  // Soporte para pasar la ruta de un caso de prueba por argumento CLI
-  const customFilePath = process.argv[2];
-  const targetJsonPath = customFilePath
-    ? path.resolve(process.cwd(), customFilePath)
-    : path.resolve(process.cwd(), "data", "transactions.json");
+  const emicronMode = process.argv[2] === "--emicron";
+  let dataAdapter: FinancialDataPort;
+  let toolset: AgentToolset | undefined;
+  let sourceLabel: string;
+  let sourceKind: string;
+
+  if (emicronMode) {
+    const run = await buildEmicronRun(process.argv[3]);
+    dataAdapter = run.dataAdapter;
+    toolset = run.toolset;
+    sourceLabel = run.label;
+    sourceKind = "Fuente de datos";
+  } else {
+    // Soporte para pasar la ruta de un caso de prueba por argumento CLI
+    const customFilePath = process.argv[2];
+    const targetJsonPath = customFilePath
+      ? path.resolve(process.cwd(), customFilePath)
+      : path.resolve(process.cwd(), "data", "transactions.json");
+    dataAdapter = new JsonFileFinancialAdapter(targetJsonPath);
+    sourceLabel = path.basename(targetJsonPath);
+    sourceKind = "Archivo de Transacciones";
+  }
 
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
   console.log("\x1b[1m\x1b[33m%s\x1b[0m", "🚀 FINANIA — COPILOTO FINANCIERO (AUDITORÍA STRICTA)");
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
-  console.log(`📂 Archivo de Transacciones: \x1b[35m${path.basename(targetJsonPath)}\x1b[0m\n`);
-
-  const dataAdapter = new JsonFileFinancialAdapter(targetJsonPath);
+  console.log(`📂 ${sourceKind}: \x1b[35m${sourceLabel}\x1b[0m\n`);
 
   const useRealLLM = process.env.LLM_API_KEY && process.env.LLM_API_KEY !== "pk_placeholder";
-  
+
   let llmAdapter;
   if (useRealLLM) {
     console.log("🌐 \x1b[32mConectando con LLM Real (Grok 4.7 @ https://api.reto.pltk.mx/v1)...\x1b[0m");
@@ -33,7 +78,7 @@ async function main() {
 
   const orchestrator = new AgentOrchestrator(dataAdapter, llmAdapter);
 
-  const { summary, recommendation } = await orchestrator.runAutonomousCycle();
+  const { summary, recommendation } = await orchestrator.runAutonomousCycle(toolset);
 
   console.log("\n\x1b[36m%s\x1b[0m", "--------------------------------------------------");
   console.log("\x1b[1m\x1b[31m%s\x1b[0m", "📌 DICTAMEN DE AUDITORÍA FINANCIERA");
@@ -56,6 +101,10 @@ async function main() {
     console.log(`Prompt Tokens: ${recommendation.telemetry.promptTokens}`);
     console.log(`Completion Tokens: ${recommendation.telemetry.completionTokens}`);
     console.log(`Total Tokens: \x1b[1m${recommendation.telemetry.totalTokens}\x1b[0m`);
+  }
+
+  if (emicronMode) {
+    console.log("\nFuente: Departamento Administrativo Nacional de Estadística: www.dane.gov.co");
   }
 
   // Exportar el informe a Markdown automáticamente

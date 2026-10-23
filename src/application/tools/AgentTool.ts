@@ -1,25 +1,8 @@
 import { z } from "zod";
 import { DataSourceError } from "../../ports/MicroBusinessDataPort.js";
+import { AgentTool, ToolErrorCode, ToolResult } from "../../ports/AgentToolPort.js";
 
-export type ToolErrorCode =
-  | "INVALID_ARGUMENTS"
-  | "BUSINESS_NOT_FOUND"
-  | "INSUFFICIENT_PEERS"
-  | "DATA_SOURCE_ERROR"
-  | "UNKNOWN_TOOL"
-  | "TOOL_EXECUTION_ERROR";
-
-export type ToolResult =
-  | { ok: true; data: unknown }
-  | { ok: false; error: { code: ToolErrorCode; message: string } };
-
-// Herramienta que el agente decide invocar; nunca lanza, siempre devuelve un ToolResult
-export interface AgentTool {
-  name: string;
-  description: string;
-  parameters: Record<string, unknown>;
-  execute(args: unknown): Promise<ToolResult>;
-}
+export type { AgentTool, AgentToolset, ToolErrorCode, ToolResult } from "../../ports/AgentToolPort.js";
 
 export class ToolError extends Error {
   constructor(public readonly code: ToolErrorCode, message: string) {

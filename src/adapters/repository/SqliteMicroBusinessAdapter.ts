@@ -78,6 +78,18 @@ export class SqliteMicroBusinessAdapter implements MicroBusinessDataPort {
     }));
   }
 
+  async getRandomBusinessId(): Promise<string | null> {
+    const row = this.query((db) =>
+      db.prepare("SELECT business_id FROM monthly_financials WHERE sales_last_month > 0 ORDER BY RANDOM() LIMIT 1").get()
+    );
+    return row ? String(row.business_id) : null;
+  }
+
+  close(): void {
+    this.db?.close();
+    this.db = null;
+  }
+
   private query<T>(fn: (db: DatabaseSync) => T): T {
     try {
       // Solo lectura: si la base no existe falla en lugar de crear un archivo vacío

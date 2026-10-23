@@ -18,15 +18,21 @@ function findTool(tools: AgentTool[], name: string): AgentTool {
 describe("Herramientas mensuales sobre EMICRON", () => {
   let tmpDir: string;
   let tools: AgentTool[];
+  const adapters: SqliteMicroBusinessAdapter[] = [];
+  const open = (file: string) => {
+    const adapter = new SqliteMicroBusinessAdapter(path.join(tmpDir, file));
+    adapters.push(adapter);
+    return adapter;
+  };
 
   beforeAll(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "emicron-tools-"));
-    const dbPath = path.join(tmpDir, "emicron.sqlite");
-    ingestEmicron(fixturesDir, dbPath);
-    tools = createMonthlyTools(new SqliteMicroBusinessAdapter(dbPath), { minPeers: 2 });
+    ingestEmicron(fixturesDir, path.join(tmpDir, "emicron.sqlite"));
+    tools = createMonthlyTools(open("emicron.sqlite"), { minPeers: 2 });
   });
 
   afterAll(() => {
+    adapters.forEach((adapter) => adapter.close());
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -105,9 +111,7 @@ describe("Herramientas mensuales sobre EMICRON", () => {
   });
 
   it("debe devolver INSUFFICIENT_PEERS si no hay pares suficientes para comparar", async () => {
-    const strictTools = createMonthlyTools(
-      new SqliteMicroBusinessAdapter(path.join(tmpDir, "emicron.sqlite"))
-    );
+    const strictTools = createMonthlyTools(open("emicron.sqlite"));
     const result = await findTool(strictTools, "compareWithSectorPeers").execute({ businessId: "100-1-1" });
 
     expect(result).toMatchObject({ ok: false, error: { code: "INSUFFICIENT_PEERS" } });
@@ -131,7 +135,7 @@ describe("Herramientas mensuales sobre EMICRON", () => {
   });
 
   it("debe devolver DATA_SOURCE_ERROR si la base EMICRON no fue ingestada", async () => {
-    const brokenTools = createMonthlyTools(new SqliteMicroBusinessAdapter(path.join(tmpDir, "no-existe.sqlite")));
+    const brokenTools = createMonthlyTools(open("no-existe.sqlite"));
     const result = await findTool(brokenTools, "getMonthlyStatement").execute({ businessId: "100-1-1" });
 
     expect(result).toMatchObject({ ok: false, error: { code: "DATA_SOURCE_ERROR" } });
