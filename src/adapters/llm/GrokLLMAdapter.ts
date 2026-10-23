@@ -11,6 +11,7 @@ import {
 import { AgentTool, AgentToolset, ToolResult } from "../../ports/AgentToolPort.js";
 import { createTransactionToolset } from "../../application/tools/transactionTools.js";
 import { withExponentialBackoff } from "./exponentialBackoff.js";
+import { ExecutionObserver, LLMUsage } from "../../ports/ExecutionLogPort.js";
 
 // Subconjunto del cliente OpenAI que usa el adaptador (permite inyectar un cliente falso en tests)
 export type ChatCompletionsClient = {
@@ -23,11 +24,21 @@ export type ChatCompletionsClient = {
   };
 };
 
+function parseArgsForLog(raw: string): unknown {
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return raw;
+  }
+}
+
 export class GrokLLMAdapter implements LLMAgentPort {
   private client: ChatCompletionsClient;
   private model: string;
+  private observer?: ExecutionObserver;
 
-  constructor(options: { client?: ChatCompletionsClient } = {}) {
+  constructor(options: { client?: ChatCompletionsClient; observer?: ExecutionObserver } = {}) {
+    this.observer = options.observer;
     const baseURL = process.env.LLM_BASE_URL || "https://api.reto.pltk.mx/v1";
     const apiKey = process.env.LLM_API_KEY;
     this.model = process.env.LLM_MODEL || "grok-4.7";
@@ -108,6 +119,7 @@ ${toolset.context} Investiga con las herramientas si lo consideras necesario y e
 
     while (iterations < maxIterations) {
       iterations++;
+      const callStart = performance.now();
       const response = await withExponentialBackoff(() =>
         this.client.chat.completions.create({
           model: this.model,
@@ -125,6 +137,14 @@ ${toolset.context} Investiga con las herramientas si lo consideras necesario y e
 
       const choice = response.choices[0];
       const message = choice.message;
+      this.observer?.llmCall({
+        kind: "agent",
+        iteration: iterations,
+        model: response.model || this.model,
+        latencyMs: Math.round(performance.now() - callStart),
+        usage: response.usage as LLMUsage | undefined,
+        toolCallsRequested: (message.tool_calls ?? []).map((call) => (call.type === "function" ? call.function.name : call.type)),
+      });
 
       if (message.tool_calls && message.tool_calls.length > 0) {
         messages.push(message);
@@ -133,7 +153,14 @@ ${toolset.context} Investiga con las herramientas si lo consideras necesario y e
           if (toolCall.type === "function") {
             const fnName = toolCall.function.name;
             console.log(`🛠️ [Agente Autónomo Tool Calling] Invocando herramienta: ${fnName}...`);
+            const toolStart = performance.now();
             const toolResult = await this.runTool(toolset.tools, fnName, toolCall.function.arguments);
+            this.observer?.toolCall({
+              tool: fnName,
+              args: parseArgsForLog(toolCall.function.arguments),
+              durationMs: Math.round(performance.now() - toolStart),
+              result: toolResult,
+            });
             if (!toolResult.ok) {
               console.warn(`⚠️ [Tool Error] ${fnName} → ${toolResult.error.code}: ${toolResult.error.message}`);
             }

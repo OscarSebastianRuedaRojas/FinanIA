@@ -5,6 +5,7 @@ import { InvoiceExtraction, InvoiceExtractionSchema } from "../../domain/entitie
 import { InvoiceImage, InvoiceScanError, InvoiceScanResult, InvoiceScannerPort } from "../../ports/InvoiceScannerPort.js";
 import { ChatCompletionsClient } from "./GrokLLMAdapter.js";
 import { withExponentialBackoff } from "./exponentialBackoff.js";
+import { ExecutionObserver, LLMUsage } from "../../ports/ExecutionLogPort.js";
 
 type Message = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -36,8 +37,10 @@ export class GrokVisionAdapter implements InvoiceScannerPort {
   private client: ChatCompletionsClient;
   private model: string;
   private retryBaseDelayMs: number;
+  private observer?: ExecutionObserver;
 
-  constructor(options: { client?: ChatCompletionsClient; retryBaseDelayMs?: number } = {}) {
+  constructor(options: { client?: ChatCompletionsClient; retryBaseDelayMs?: number; observer?: ExecutionObserver } = {}) {
+    this.observer = options.observer;
     this.model = process.env.LLM_MODEL || "grok-4.7";
     this.retryBaseDelayMs = options.retryBaseDelayMs ?? 1000;
 
@@ -73,7 +76,15 @@ export class GrokVisionAdapter implements InvoiceScannerPort {
 
     // Un intento más un reintento correctivo si la respuesta no pasa la validación
     for (let attempt = 0; attempt < 2; attempt++) {
+      const callStart = performance.now();
       const response = await this.complete(messages);
+      this.observer?.llmCall({
+        kind: "vision",
+        iteration: attempt + 1,
+        model: response.model || this.model,
+        latencyMs: Math.round(performance.now() - callStart),
+        usage: response.usage as LLMUsage | undefined,
+      });
       promptTokens += response.usage?.prompt_tokens || 0;
       completionTokens += response.usage?.completion_tokens || 0;
       model = response.model || model;
