@@ -8,10 +8,10 @@ import {
   Transaction,
   Telemetry,
 } from "../../domain/entities/Financial.js";
-import { AgentTool, AgentToolset, ToolResult } from "../../ports/AgentToolPort.js";
+import { AgentToolset } from "../../ports/AgentToolPort.js";
 import { createTransactionToolset } from "../../application/tools/transactionTools.js";
-import { withExponentialBackoff } from "./exponentialBackoff.js";
-import { ExecutionObserver, LLMUsage } from "../../ports/ExecutionLogPort.js";
+import { runReActLoop } from "./reactLoop.js";
+import { ExecutionObserver } from "../../ports/ExecutionLogPort.js";
 
 // Subconjunto del cliente OpenAI que usa el adaptador (permite inyectar un cliente falso en tests)
 export type ChatCompletionsClient = {
@@ -23,14 +23,6 @@ export type ChatCompletionsClient = {
     };
   };
 };
-
-function parseArgsForLog(raw: string): unknown {
-  try {
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return raw;
-  }
-}
 
 export class GrokLLMAdapter implements LLMAgentPort {
   private client: ChatCompletionsClient;
@@ -86,11 +78,6 @@ Formato Final Obligatorio JSON (sin markdown wrapping):
   "estimatedImpact": "Estimación del impacto económico en liquidez o márgenes"
 }`;
 
-    const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = toolset.tools.map((tool) => ({
-      type: "function",
-      function: { name: tool.name, description: tool.description, parameters: tool.parameters },
-    }));
-
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: systemPrompt },
       {
@@ -110,108 +97,19 @@ ${toolset.context} Investiga con las herramientas si lo consideras necesario y e
     ];
 
     const startTime = performance.now();
-    let totalPromptTokens = 0;
-    let totalCompletionTokens = 0;
-    let iterations = 0;
-    const maxIterations = 5;
-
-    let finalContent = "";
-    let answered = false;
-
-    while (iterations < maxIterations) {
-      iterations++;
-      const callStart = performance.now();
-      const response = await withExponentialBackoff(() =>
-        this.client.chat.completions.create({
-          model: this.model,
-          messages,
-          tools,
-          tool_choice: "auto",
-          temperature: 0.1,
-        })
-      );
-
-      if (response.usage) {
-        totalPromptTokens += response.usage.prompt_tokens || 0;
-        totalCompletionTokens += response.usage.completion_tokens || 0;
-      }
-
-      const choice = response.choices[0];
-      const message = choice.message;
-      this.observer?.llmCall({
-        kind: "agent",
-        iteration: iterations,
-        model: response.model || this.model,
-        latencyMs: Math.round(performance.now() - callStart),
-        usage: response.usage as LLMUsage | undefined,
-        toolCallsRequested: (message.tool_calls ?? []).map((call) => (call.type === "function" ? call.function.name : call.type)),
-      });
-
-      if (message.tool_calls && message.tool_calls.length > 0) {
-        messages.push(message);
-
-        for (const toolCall of message.tool_calls) {
-          if (toolCall.type === "function") {
-            const fnName = toolCall.function.name;
-            console.log(`🛠️ [Agente Autónomo Tool Calling] Invocando herramienta: ${fnName}...`);
-            const toolStart = performance.now();
-            const toolResult = await this.runTool(toolset.tools, fnName, toolCall.function.arguments);
-            this.observer?.toolCall({
-              tool: fnName,
-              args: parseArgsForLog(toolCall.function.arguments),
-              durationMs: Math.round(performance.now() - toolStart),
-              result: toolResult,
-            });
-            if (!toolResult.ok) {
-              console.warn(`⚠️ [Tool Error] ${fnName} → ${toolResult.error.code}: ${toolResult.error.message}`);
-            }
-
-            messages.push({
-              role: "tool",
-              tool_call_id: toolCall.id,
-              content: JSON.stringify(toolResult),
-            });
-          }
-        }
-      } else {
-        finalContent = message.content || "";
-        answered = true;
-        break;
-      }
-    }
-
-    // Límite de iteraciones agotado: una última llamada sin herramientas para obtener el dictamen
-    if (!answered) {
-      console.warn(`⚠️ [Agente] Se alcanzó el límite de ${maxIterations} iteraciones; se fuerza el cierre del dictamen.`);
-      messages.push({
-        role: "user",
-        content:
-          "Alcanzaste el límite de iteraciones de herramientas. Emití AHORA el dictamen final en el formato JSON indicado, usando solo la información que ya recolectaste.",
-      });
-      const callStart = performance.now();
-      const response = await withExponentialBackoff(() =>
-        this.client.chat.completions.create({
-          model: this.model,
-          messages,
-          tools,
-          tool_choice: "none",
-          temperature: 0.1,
-        })
-      );
-      if (response.usage) {
-        totalPromptTokens += response.usage.prompt_tokens || 0;
-        totalCompletionTokens += response.usage.completion_tokens || 0;
-      }
-      this.observer?.llmCall({
-        kind: "agent",
-        iteration: maxIterations + 1,
-        model: response.model || this.model,
-        latencyMs: Math.round(performance.now() - callStart),
-        usage: response.usage as LLMUsage | undefined,
-        toolCallsRequested: [],
-      });
-      finalContent = response.choices[0]?.message?.content || "";
-    }
+    const loop = await runReActLoop({
+      client: this.client,
+      model: this.model,
+      messages,
+      tools: toolset.tools,
+      maxIterations: 5,
+      forceFinalPrompt:
+        "Alcanzaste el límite de iteraciones de herramientas. Emití AHORA el dictamen final en el formato JSON indicado, usando solo la información que ya recolectaste.",
+      observer: this.observer,
+    });
+    const finalContent = loop.content;
+    const totalPromptTokens = loop.promptTokens;
+    const totalCompletionTokens = loop.completionTokens;
 
     const endTime = performance.now();
     const executionTimeMs = Number((endTime - startTime).toFixed(2));
@@ -271,20 +169,6 @@ ${toolset.context} Investiga con las herramientas si lo consideras necesario y e
     return schemaValidation.data;
   }
 
-  // Nunca lanza: los errores vuelven al LLM como resultado de la herramienta
-  private async runTool(tools: AgentTool[], name: string, rawArguments: string): Promise<ToolResult> {
-    const tool = tools.find((candidate) => candidate.name === name);
-    if (!tool) {
-      return { ok: false, error: { code: "UNKNOWN_TOOL", message: `La herramienta "${name}" no existe. Disponibles: ${tools.map((t) => t.name).join(", ")}.` } };
-    }
-    let args: unknown;
-    try {
-      args = rawArguments ? JSON.parse(rawArguments) : {};
-    } catch {
-      return { ok: false, error: { code: "INVALID_ARGUMENTS", message: `Los argumentos de ${name} no son JSON válido.` } };
-    }
-    return tool.execute(args);
-  }
 
 }
 
