@@ -116,6 +116,7 @@ ${toolset.context} Investiga con las herramientas si lo consideras necesario y e
     const maxIterations = 5;
 
     let finalContent = "";
+    let answered = false;
 
     while (iterations < maxIterations) {
       iterations++;
@@ -174,8 +175,42 @@ ${toolset.context} Investiga con las herramientas si lo consideras necesario y e
         }
       } else {
         finalContent = message.content || "";
+        answered = true;
         break;
       }
+    }
+
+    // Límite de iteraciones agotado: una última llamada sin herramientas para obtener el dictamen
+    if (!answered) {
+      console.warn(`⚠️ [Agente] Se alcanzó el límite de ${maxIterations} iteraciones; se fuerza el cierre del dictamen.`);
+      messages.push({
+        role: "user",
+        content:
+          "Alcanzaste el límite de iteraciones de herramientas. Emití AHORA el dictamen final en el formato JSON indicado, usando solo la información que ya recolectaste.",
+      });
+      const callStart = performance.now();
+      const response = await withExponentialBackoff(() =>
+        this.client.chat.completions.create({
+          model: this.model,
+          messages,
+          tools,
+          tool_choice: "none",
+          temperature: 0.1,
+        })
+      );
+      if (response.usage) {
+        totalPromptTokens += response.usage.prompt_tokens || 0;
+        totalCompletionTokens += response.usage.completion_tokens || 0;
+      }
+      this.observer?.llmCall({
+        kind: "agent",
+        iteration: maxIterations + 1,
+        model: response.model || this.model,
+        latencyMs: Math.round(performance.now() - callStart),
+        usage: response.usage as LLMUsage | undefined,
+        toolCallsRequested: [],
+      });
+      finalContent = response.choices[0]?.message?.content || "";
     }
 
     const endTime = performance.now();
