@@ -22,7 +22,7 @@ Out of scope for now: benchmark against a human (optional item), `sendAlert` unt
 | ID | Specs | Route | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | T1 | S1 | inline | done | RED 1 failed → GREEN; suite 71/71 |
-| T2 | S2 | inline | pending | — |
+| T2 | S2 | inline | done | RED missing module → GREEN 8/8; real data: worst-margin restaurants in Antioquia in 425 ms; "restaurantes" → INVALID_ARGUMENTS with valid sectors |
 | T3 | S4 | inline | pending | — |
 | T4 | S3, S5 | inline | pending | — |
 | T5 | S6 | inline | pending | — |

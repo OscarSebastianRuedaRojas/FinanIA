@@ -1,4 +1,12 @@
-import { FinancialLine, MicroBusinessProfile, MonthlyFigures, PeerFigures } from "../domain/entities/MicroBusiness.js";
+import {
+  BusinessRanking,
+  CatalogEntry,
+  FinancialLine,
+  MicroBusinessProfile,
+  MonthlyFigures,
+  PeerFigures,
+  RankingCriteria,
+} from "../domain/entities/MicroBusiness.js";
 
 // Falla de infraestructura al consultar la fuente de datos (base ausente, corrupta, etc.)
 export class DataSourceError extends Error {
@@ -16,4 +24,9 @@ export interface MicroBusinessDataPort {
   getSectorPeers(sectorCode: string, departmentCode: string | null, excludeBusinessId: string): Promise<PeerFigures[]>;
   // Micronegocio al azar con ventas positivas (null si la base está vacía)
   getRandomBusinessId(): Promise<string | null>;
+  // Sectores y departamentos presentes en la base
+  listSectors(): Promise<CatalogEntry[]>;
+  listDepartments(): Promise<CatalogEntry[]>;
+  // Micronegocios con ventas positivas ordenados por una métrica
+  rankBusinesses(criteria: RankingCriteria): Promise<BusinessRanking[]>;
 }
