@@ -73,6 +73,25 @@ describe("runExecutionPlan", () => {
     expect(log.events.filter((e) => e.type === "run_validated")).toHaveLength(3);
   });
 
+  it("debe pasarle a cada caso su runId", async () => {
+    const seen: string[] = [];
+    const contextCase: ExecutionCase<unknown> = {
+      id: "E09",
+      title: "Caso que usa el runId",
+      source: "goal",
+      label: "objetivo",
+      run: async (_observer, context) => {
+        seen.push(context.runId);
+        return {};
+      },
+      validate: () => [],
+    };
+
+    await runExecutionPlan([contextCase], { log: new MemoryLog(), runIdPrefix: "s3-test" });
+
+    expect(seen).toEqual(["s3-test-E09"]);
+  });
+
   it("no debe dejar cifras de microdatos EMICRON en la bitácora", async () => {
     const log = new MemoryLog();
 

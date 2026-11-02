@@ -12,7 +12,7 @@ export interface ExecutionCase<O> {
   source: ExecutionSource;
   label: string;
   redactResult?: boolean;
-  run(observer: ExecutionObserver): Promise<O>;
+  run(observer: ExecutionObserver, context: { runId: string }): Promise<O>;
   resultForLog?(value: O): unknown;
   summarize?(value: O): string;
   validate(outcome: CaseOutcome<O>, recorder: ExecutionRecorder): ValidationCheck[];
@@ -51,7 +51,7 @@ export async function runExecutionPlan(
     recorder.start();
     let outcome: CaseOutcome<unknown>;
     try {
-      outcome = { status: "success", value: await executionCase.run(recorder) };
+      outcome = { status: "success", value: await executionCase.run(recorder, { runId }) };
     } catch (error: any) {
       outcome = { status: "error", error: { ...(error?.code ? { code: String(error.code) } : {}), message: error?.message ?? String(error) } };
     }
