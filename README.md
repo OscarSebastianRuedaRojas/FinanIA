@@ -184,7 +184,25 @@ npm run bitacora:s2
 
 La evidencia queda en [`docs/bitacora/s2-ejecuciones.md`](docs/bitacora/s2-ejecuciones.md) (resumen) y [`docs/bitacora/s2-ejecuciones.jsonl`](docs/bitacora/s2-ejecuciones.jsonl) (bitácora completa). En los casos EMICRON la bitácora no guarda el texto del dictamen ni los datos que devuelven las herramientas, por la licencia del DANE.
 
-### 9. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 9. Agente Autónomo por Objetivo (S3)
+Dale al agente un objetivo en lenguaje natural y él decide qué pasos dar:
+
+```bash
+npm run agent -- "Encontrá los 3 restaurantes de Antioquia con peor margen, con ventas de al menos 1 millón de pesos, compará cada uno con su sector y guardá un plan de acción para cada uno"
+```
+
+El agente planifica y combina sus herramientas por su cuenta:
+
+| Herramienta | Tipo | Qué hace |
+| :--- | :--- | :--- |
+| `findBusinesses` | Búsqueda | Filtra micronegocios EMICRON por sector y departamento (nombre o código DANE) y los ordena por margen, ventas o variación interanual |
+| `getMonthlyStatement`, `compareWithSectorPeers`, `getYearOverYearSales` | Consulta | Auditan cada negocio con datos reales |
+| `saveAuditReport` | **Acción** | Guarda el dictamen en la base propia de FinanIA (`data/finania.sqlite`) |
+| `scanInvoice` | Visión | Lee fotos de facturas dentro del proyecto con Grok Vision |
+
+Al terminar, el CLI muestra el informe del agente y **los dictámenes que realmente quedaron guardados en la base** (no lo que el agente dice que hizo), junto con llamadas, herramientas, tokens y costo. Si el agente agota sus 20 iteraciones, se le pide un cierre explícito con lo que ya hizo.
+
+### 10. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm test
 ```
