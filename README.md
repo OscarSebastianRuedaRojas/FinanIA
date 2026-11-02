@@ -202,7 +202,28 @@ El agente planifica y combina sus herramientas por su cuenta:
 
 Al terminar, el CLI muestra el informe del agente y **los dictámenes que realmente quedaron guardados en la base** (no lo que el agente dice que hizo), junto con llamadas, herramientas, tokens y costo. Si el agente agota sus 20 iteraciones, se le pide un cierre explícito con lo que ya hizo.
 
-### 10. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 10. Set de Evaluación y Reporte de Costo por Tarea (S3)
+Un set propio de **34 casos sobre datos reales** mide si el agente acierta:
+
+```bash
+npm run eval:s3
+```
+
+- **30 auditorías** de micronegocios EMICRON, 6 por escenario: pérdida, margen estrecho, crecimiento, caída interanual y un gasto que se come más del 35% de las ventas. Los casos se eligen con reglas determinísticas sobre los datos, y lo que el agente tiene que acertar en cada escenario está definido de antemano (ej. prioridad HIGH o CRITICAL si está en pérdida, mencionar el gasto dominante).
+- **4 objetivos en texto libre** (ej. "los 3 restaurantes de Antioquia con peor margen"). Los negocios esperados salen de un ranking por SQL y se comparan con los dictámenes que el agente **realmente guardó** en la base.
+
+El resultado queda en [`docs/bitacora/s3-evaluacion.md`](docs/bitacora/s3-evaluacion.md), con los aciertos por escenario.
+
+Para el costo por tarea a partir de cualquier bitácora:
+
+```bash
+npm run reporte:costos
+npm run reporte:costos -- docs/bitacora/s3-evaluacion.jsonl --tarea emicron --unidades 1000
+```
+
+Genera [`docs/bitacora/reporte-costos.md`](docs/bitacora/reporte-costos.md) con el costo promedio, mínimo, máximo y total por tipo de tarea, más la proyección de costo y tiempo para las 1.000 unidades de S4.
+
+### 11. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm test
 ```

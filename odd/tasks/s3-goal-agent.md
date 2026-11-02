@@ -25,7 +25,7 @@ Out of scope for now: benchmark against a human (optional item), `sendAlert` unt
 | T2 | S2 | inline | done | RED missing module → GREEN 8/8; real data: worst-margin restaurants in Antioquia in 425 ms; "restaurantes" → INVALID_ARGUMENTS with valid sectors |
 | T3 | S4 | inline | done | RED missing module → GREEN 5/5; suite 84/84 |
 | T4 | S3, S5 | inline | done | RED missing module → GREEN 6/6; suite 90/90; live: roadmap goal (3 worst-margin restaurants in Antioquia) → 13 tool calls, 3 reports saved, same IDs as SQL ranking, US$0.0341 |
-| T5 | S6 | inline | pending | — |
+| T5 | S6 | inline | done | `npm run eval:s3`: 34/34 (30 scenario audits + 4 goals), 263,475 tokens, US$0.64; goals 0 tool errors; evidence redacted (saveAuditReport args leak found and fixed) |
 | T6 | S7 | inline | done | RED missing module → GREEN 4/4; smoke on S2 log matches the manual numbers ($0.014974 avg EMICRON, 5.53 h for 1,000 units) |
 
 Route evidence: tasks depend on each other (T4 uses T1–T3, T5 uses T4, T6 reads T5's log); no Writer trigger, all inline.
@@ -34,3 +34,4 @@ Route evidence: tasks depend on each other (T4 uses T1–T3, T5 uses T4, T6 read
 
 - L1 (2026-11-01, user): "Abre una rama de main y vamos a empezar con el desaollo de la S3 que esta en el roadmap"
 - L2: PR #1 (S2: EMICRON tools, invoice vision, execution log) is merged into `main`; branch created from `f3ba676`.
+- L3: The first eval log contained saveAuditReport free-text args (business figures). Fixed in the recorder (structural-args allowlist) and the existing evidence was sanitized with the same function instead of re-running. Caveat: in the "perdida" scenario the priority guardrail already forces HIGH/CRITICAL, so that check measures the full system rather than the model alone.
