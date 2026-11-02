@@ -13,6 +13,7 @@
     "scan:factura": "tsx src/scanInvoice.ts",
     "bitacora:s2": "tsx src/runS2Executions.ts",
     "eval:s3": "tsx src/runS3Evaluation.ts",
+    "reporte:costos": "tsx src/costReportCli.ts",
     "data:emicron": "tsx src/infrastructure/emicron/ingestCli.ts",
     "dev": "tsx watch src/index.ts",
     "test": "vitest run"

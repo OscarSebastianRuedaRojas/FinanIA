@@ -26,7 +26,7 @@ Out of scope for now: benchmark against a human (optional item), `sendAlert` unt
 | T3 | S4 | inline | done | RED missing module → GREEN 5/5; suite 84/84 |
 | T4 | S3, S5 | inline | done | RED missing module → GREEN 6/6; suite 90/90; live: roadmap goal (3 worst-margin restaurants in Antioquia) → 13 tool calls, 3 reports saved, same IDs as SQL ranking, US$0.0341 |
 | T5 | S6 | inline | pending | — |
-| T6 | S7 | inline | pending | — |
+| T6 | S7 | inline | done | RED missing module → GREEN 4/4; smoke on S2 log matches the manual numbers ($0.014974 avg EMICRON, 5.53 h for 1,000 units) |
 
 Route evidence: tasks depend on each other (T4 uses T1–T3, T5 uses T4, T6 reads T5's log); no Writer trigger, all inline.
 
