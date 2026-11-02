@@ -146,6 +146,32 @@ describe("ExecutionRecorder", () => {
     expect(log.events.at(-1)).toMatchObject({ result: { priority: "MEDIUM", actionPlanItems: 2, redacted: true } });
   });
 
+  it("S4 debe omitir el texto libre de los argumentos de herramientas en corridas con microdatos", () => {
+    const log = new MemoryLog();
+    const recorder = new ExecutionRecorder(log, { runId: "r1", source: "goal", label: "objetivo", redactResult: true }, steppingClock());
+
+    recorder.toolCall({
+      tool: "saveAuditReport",
+      args: { businessId: "7723127-1-1", priority: "CRITICAL", title: "Margen -50%", diagnosis: "ventas de $2.000.000", actionPlan: ["Bajar insumos de $3.000.000"] },
+      durationMs: 4,
+      result: { ok: true, data: { reportId: 1 } },
+    });
+    recorder.toolCall({
+      tool: "findBusinesses",
+      args: { sector: "07", department: "Antioquia", rankBy: "operatingMargin", order: "asc", limit: 3, minSalesLastMonth: 1000000 },
+      durationMs: 4,
+      result: { ok: true, data: {} },
+    });
+
+    expect(log.events[0]).toMatchObject({
+      args: { businessId: "7723127-1-1", priority: "CRITICAL", title: "[omitido]", diagnosis: "[omitido]", actionPlan: "[omitido]" },
+    });
+    expect(log.events[1]).toMatchObject({
+      args: { sector: "07", department: "Antioquia", rankBy: "operatingMargin", order: "asc", limit: 3, minSalesLastMonth: 1000000 },
+    });
+    expect(recorder.toolCalls[0].args).toMatchObject({ diagnosis: "ventas de $2.000.000" });
+  });
+
   it("debe registrar errores y validaciones de la corrida", () => {
     const log = new MemoryLog();
     const recorder = new ExecutionRecorder(log, { runId: "r1", source: "invoice", label: "foto.png" }, steppingClock());

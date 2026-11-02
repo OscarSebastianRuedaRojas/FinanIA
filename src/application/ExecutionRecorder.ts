@@ -10,6 +10,28 @@ import {
 
 const TICKS_PER_USD = 10_000_000_000;
 
+// Argumentos estructurales que se pueden registrar aunque la corrida use microdatos del DANE
+const STRUCTURAL_ARGS = new Set([
+  "businessId",
+  "scope",
+  "sector",
+  "department",
+  "rankBy",
+  "order",
+  "limit",
+  "minSalesLastMonth",
+  "priority",
+  "imagePath",
+]);
+
+// El texto libre que escribe el agente (títulos, diagnósticos, planes) cita cifras de negocios reales
+export function redactToolArgs(args: unknown): unknown {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return "[omitido]";
+  return Object.fromEntries(
+    Object.entries(args as Record<string, unknown>).map(([key, value]) => [key, STRUCTURAL_ARGS.has(key) ? value : "[omitido]"])
+  );
+}
+
 export interface RecordedToolCall {
   tool: string;
   args: unknown;
@@ -96,7 +118,7 @@ export class ExecutionRecorder implements ExecutionObserver {
       runId: this.meta.runId,
       timestamp: this.clock().toISOString(),
       tool: info.tool,
-      args: info.args,
+      args: this.meta.redactResult ? redactToolArgs(info.args) : info.args,
       ok: info.result.ok,
       ...(info.result.ok ? {} : { errorCode, errorMessage: info.result.error.message }),
       durationMs: info.durationMs,
