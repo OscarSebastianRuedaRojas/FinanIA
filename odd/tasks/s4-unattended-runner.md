@@ -22,7 +22,7 @@ Official S4 deliverable: "1,000 unidades de trabajo, 12 horas desatendido y bit�
 | ID | Specs | Route | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | A1 | S1, S2 | inline | done | RED missing module → GREEN; phone-number leaks in error messages found and covered by tests; suite 115/115; independent security verifier: no blockers (advisory on local-format numbers fixed); live send pending user Twilio credentials |
-| A2 | S3, S3.1–S3.5 | inline | pending | — |
+| A2 | S3, S3.1–S3.5 | inline | done | RED → GREEN: runner 10/10, checkpoint 5/5, report 5/5; suite 147/147; live rehearsal s4-ensayo: 3/3 validated, US$0.0456, resume skips finished units, 3 reports saved, log redacted |
 | A3 | S4 | inline | pending | — |
 
 ## Log

@@ -263,7 +263,25 @@ Las alertas no incluyen cifras de los negocios del DANE: el agente los identific
 
 Si el número no está unido al sandbox o la sesión venció, la alerta falla con `ALERT_RECIPIENT_NOT_JOINED` y el mensaje explica cómo volver a unirse. En los dos canales, las caídas de red o errores 5xx se reintentan con backoff exponencial. Si no hay ningún canal configurado, `sendAlert` no se le ofrece al agente.
 
-### 12. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 12. Prueba de Carga Desatendida (S4)
+El runner procesa **1.000 micronegocios reales** a ritmo fijo durante **12 horas**, sin intervención:
+
+```bash
+npm run s4:carga -- --unidades 1000 --horas 12 --concurrencia 2 --tope-usd 25
+```
+
+- **Ritmo fijo:** reparte las unidades en el tiempo indicado (1.000 en 12 h = una cada ~43 s), con concurrencia limitada.
+- **Checkpoint:** el estado de cada unidad vive en `data/finania.sqlite`. Si el proceso se cae o lo detenés con Ctrl+C, se retoma sin repetir trabajo:
+  ```bash
+  npm run s4:carga -- --run-id <id-de-la-corrida>
+  ```
+- **Fallos:** cada unidad fallida se reintenta una vez y se guarda su código de error. Tres fallos seguidos disparan una alerta.
+- **Tope de créditos:** al llegar al tope no se inician más unidades, se envía una alerta CRITICAL y el resto queda pendiente.
+- **Alertas al celular:** inicio, progreso cada 100 unidades, fallos, tope y cierre (requiere el canal de la sección 11).
+- **La plataforma actúa:** el dictamen de cada negocio se guarda en la base.
+- **Evidencia:** `docs/bitacora/<id>.md` (resumen, fallos por código y resultado de cada unidad, regenerado cada 25 unidades) y `docs/bitacora/<id>.jsonl` (bitácora completa, sin cifras del DANE).
+
+### 13. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm test
 ```

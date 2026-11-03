@@ -84,3 +84,18 @@ export function selectEvaluationCases(
     db.close();
   }
 }
+
+// Unidades de trabajo para la prueba de carga: negocios con ventas, en el mismo orden reproducible
+export function selectLoadUnits(dbPath: string, options: { count: number; minSalesLastMonth: number }): string[] {
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    return db
+      .prepare("SELECT business_id FROM monthly_financials WHERE sales_last_month > 0 AND sales_last_month >= ?")
+      .all(options.minSalesLastMonth)
+      .map((row) => String(row.business_id))
+      .sort((a, b) => spread(a) - spread(b) || a.localeCompare(b))
+      .slice(0, options.count);
+  } finally {
+    db.close();
+  }
+}
