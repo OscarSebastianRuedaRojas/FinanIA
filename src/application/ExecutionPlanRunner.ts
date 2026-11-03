@@ -90,6 +90,52 @@ export async function runExecutionPlan(
   return reports;
 }
 
+// Fallos de un caso: error de la ejecución, validaciones fallidas y errores de herramientas
+function caseFailures(report: ExecutionReport): string[] {
+  const failures: string[] = [];
+  if (report.status === "error") {
+    const code = report.error?.code ?? "error";
+    failures.push(
+      report.passed
+        ? `Error de la ejecución \`${code}\` (esperado por el caso)`
+        : `Error de la ejecución \`${code}\`: ${report.error?.message ?? ""}`
+    );
+  }
+  report.checks
+    .filter((c) => !c.passed)
+    .forEach((c) => failures.push(`Validación fallida: ${c.name}${c.detail ? ` — ${c.detail}` : ""}`));
+  report.toolCalls.forEach((call, idx) => {
+    if (call.ok) return;
+    const recovered = report.toolCalls.slice(idx + 1).some((later) => later.tool === call.tool && later.ok);
+    failures.push(`\`${call.tool}\` ✗${call.errorCode} → ${recovered ? "recuperado" : "sin recuperar"}`);
+  });
+  return failures;
+}
+
+export function renderFailures(reports: ExecutionReport[]): string {
+  const toolErrors = reports.flatMap((r) =>
+    r.toolCalls.map((call, idx) => ({ call, later: r.toolCalls.slice(idx + 1) })).filter(({ call }) => !call.ok)
+  );
+  const recovered = toolErrors.filter(({ call, later }) => later.some((l) => l.tool === call.tool && l.ok)).length;
+  const failedChecks = reports.reduce((acc, r) => acc + r.checks.filter((c) => !c.passed).length, 0);
+  const runErrors = reports.filter((r) => r.status === "error").length;
+  const withFailures = reports.filter((r) => caseFailures(r).length > 0).length;
+
+  return [
+    "## Resultados y fallos por caso",
+    "",
+    `Casos con algún fallo: **${withFailures}/${reports.length}** · Errores de herramientas: **${toolErrors.length}** (${recovered} recuperado${recovered === 1 ? "" : "s"} dentro del mismo caso) · Validaciones fallidas: **${failedChecks}** · Ejecuciones que terminaron en error: **${runErrors}**`,
+    "",
+    "| # | Resultado | Fallos y cómo terminó |",
+    "| :--- | :--- | :--- |",
+    ...reports.map((r) => {
+      const failures = caseFailures(r);
+      return `| ${r.id} | ${r.passed ? "✅ Acierto" : "❌ Fallo"} | ${failures.length ? failures.join("; ") : "—"} |`;
+    }),
+    "",
+  ].join("\n");
+}
+
 const usd = (value: number) => `$${(Number.isNaN(value) ? 0 : value).toFixed(6)}`;
 const int = (value: number) => value.toLocaleString("en-US");
 
@@ -133,6 +179,7 @@ export function renderExecutionReport(reports: ExecutionReport[], meta: { title:
     "",
     `> ${totalDuration} ejecuciones. El costo sale de \`usage.cost_in_usd_ticks\` de la API (1 USD = 10^10 ticks). En los casos EMICRON no se guarda el texto del dictamen ni los datos que devuelven las herramientas, por la licencia del DANE.`,
     "",
+    renderFailures(reports),
     "## Detalle por ejecución",
     "",
     details.join("\n\n"),
