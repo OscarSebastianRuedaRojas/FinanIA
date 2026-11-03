@@ -95,7 +95,7 @@ export class TwilioWhatsAppAlertAdapter implements AlertPort {
     if (response.ok && payload.sid) return { id: String(payload.sid) };
 
     // Twilio a veces repite el número en el mensaje: se enmascara antes de que llegue a la bitácora
-    const apiMessage = String(payload.message ?? response.statusText).replace(/(whatsapp:)?\+?\d[\d\s-]{6,}\d/g, "[número]");
+    const apiMessage = String(payload.message ?? response.statusText).replace(/(whatsapp:)?\+?\(?\d[\d\s().-]{6,}\d/g, "[número]");
     const detail = `${apiMessage} (HTTP ${response.status}${payload.code ? `, código ${payload.code}` : ""})`;
     if (response.status >= 500) throw new TransientAlertFailure(detail);
     if (payload.code === 63015) {

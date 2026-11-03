@@ -186,3 +186,13 @@ describe("Privacidad de los errores de alertas", () => {
     expect(error.message).toContain("[número]");
   });
 });
+
+describe("Privacidad: números en formato local", () => {
+  it("debe enmascarar números con paréntesis o puntos", async () => {
+    const { fetchFn } = fakeFetch([{ status: 400, body: { code: 21211, message: "Invalid To: (300) 123-4567 or 300.123.4567" } }]);
+
+    const error = await alertError(new TwilioWhatsAppAlertAdapter({ ...config, fetch: fetchFn }).send({ severity: "INFO", title: "t", message: "m" }));
+
+    expect(error.message).not.toMatch(/123.?4567/);
+  });
+});
