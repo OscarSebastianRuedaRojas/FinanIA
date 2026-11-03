@@ -9,7 +9,7 @@ import { buildGoalToolset } from "./application/goalToolset.js";
 import { EMICRON_DB_PATH } from "./infrastructure/emicron/buildEmicronRun.js";
 import { readInvoiceImage } from "./infrastructure/invoice/readInvoiceImage.js";
 import { JsonlExecutionLog } from "./infrastructure/logging/JsonlExecutionLog.js";
-import { TwilioWhatsAppAlertAdapter } from "./adapters/notifications/TwilioWhatsAppAlertAdapter.js";
+import { createAlertChannelFromEnv } from "./adapters/notifications/createAlertChannel.js";
 import { AlertError, AlertPort } from "./ports/AlertPort.js";
 
 const USAGE = 'Uso: npm run agent -- "<objetivo>"\nEj.: npm run agent -- "Encontrá los 3 restaurantes de Antioquia con peor margen y guardá un plan para cada uno"';
@@ -25,10 +25,10 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  // sendAlert solo se ofrece al agente si WhatsApp está configurado en el .env
+  // sendAlert solo se ofrece al agente si hay un canal de alertas en el .env (ntfy o WhatsApp)
   let alerts: AlertPort | undefined;
   try {
-    alerts = TwilioWhatsAppAlertAdapter.fromEnv();
+    alerts = createAlertChannelFromEnv();
   } catch (error) {
     if (!(error instanceof AlertError)) throw error;
   }
@@ -53,7 +53,7 @@ async function main(): Promise<number> {
   console.log("\x1b[1m\x1b[33m%s\x1b[0m", "🎯 FINANIA — AGENTE AUTÓNOMO POR OBJETIVO");
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
   console.log(`Objetivo: \x1b[35m${goal}\x1b[0m`);
-  console.log(alerts ? "📲 Alertas por WhatsApp: activadas\n" : "📲 Alertas por WhatsApp: desactivadas (configurá Twilio en el .env)\n");
+  console.log(alerts ? "📲 Alertas: activadas\n" : "📲 Alertas: desactivadas (configurá NTFY_TOPIC o Twilio en el .env)\n");
 
   recorder.start();
   try {

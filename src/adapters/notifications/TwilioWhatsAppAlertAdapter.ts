@@ -1,11 +1,9 @@
 import { Alert, AlertError, AlertPort } from "../../ports/AlertPort.js";
+import { TransientAlertFailure, deliverWithRetry } from "./delivery.js";
 
 const SANDBOX_FROM = "whatsapp:+14155238886";
 const MAX_BODY = 1600;
 const ICONS = { INFO: "ℹ️", WARNING: "⚠️", CRITICAL: "🚨" } as const;
-
-// Falla que vale la pena reintentar (red caída o error 5xx de Twilio)
-class TransientAlertFailure extends Error {}
 
 function toWhatsAppAddress(number: string): string {
   const digits = number.replace(/^whatsapp:/, "").replace(/[\s()-]/g, "");
@@ -62,18 +60,7 @@ export class TwilioWhatsAppAlertAdapter implements AlertPort {
     const text = `${ICONS[alert.severity]} FinanIA [${alert.severity}] ${alert.title}\n${alert.message}`;
     const body = text.length > MAX_BODY ? `${text.slice(0, MAX_BODY - 1)}…` : text;
 
-    const maxRetries = 3;
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await this.post(body);
-      } catch (error: any) {
-        if (!(error instanceof TransientAlertFailure)) throw error;
-        if (attempt === maxRetries) {
-          throw new AlertError("ALERT_DELIVERY_FAILED", `No se pudo entregar la alerta por WhatsApp: ${error.message}`);
-        }
-        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * this.retryBaseDelayMs));
-      }
-    }
+    return deliverWithRetry(() => this.post(body), this.retryBaseDelayMs);
   }
 
   private async post(body: string): Promise<{ id: string }> {
