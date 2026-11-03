@@ -1,4 +1,7 @@
+import type { InvoiceScanErrorCode } from "./InvoiceScannerPort.js";
+
 export type ToolErrorCode =
+  | InvoiceScanErrorCode
   | "INVALID_ARGUMENTS"
   | "BUSINESS_NOT_FOUND"
   | "INSUFFICIENT_PEERS"

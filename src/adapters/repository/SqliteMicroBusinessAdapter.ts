@@ -1,6 +1,14 @@
 import { DatabaseSync } from "node:sqlite";
 import { DataSourceError, MicroBusinessDataPort } from "../../ports/MicroBusinessDataPort.js";
-import { FinancialLine, MicroBusinessProfile, MonthlyFigures, PeerFigures } from "../../domain/entities/MicroBusiness.js";
+import {
+  BusinessRanking,
+  CatalogEntry,
+  FinancialLine,
+  MicroBusinessProfile,
+  MonthlyFigures,
+  PeerFigures,
+  RankingCriteria,
+} from "../../domain/entities/MicroBusiness.js";
 import { TAX_AND_LICENSE_CATEGORIES } from "../../infrastructure/emicron/EmicronCatalog.js";
 
 const TAXES_SUBQUERY = `COALESCE((
@@ -83,6 +91,65 @@ export class SqliteMicroBusinessAdapter implements MicroBusinessDataPort {
       db.prepare("SELECT business_id FROM monthly_financials WHERE sales_last_month > 0 ORDER BY RANDOM() LIMIT 1").get()
     );
     return row ? String(row.business_id) : null;
+  }
+
+  async listSectors(): Promise<CatalogEntry[]> {
+    return this.catalog("sector_code", "sector_name");
+  }
+
+  async listDepartments(): Promise<CatalogEntry[]> {
+    return this.catalog("department_code", "department_name");
+  }
+
+  async rankBusinesses(criteria: RankingCriteria): Promise<BusinessRanking[]> {
+    const metricSql: Record<RankingCriteria["rankBy"], string> = {
+      operatingMargin: "margin",
+      salesLastMonth: "f.sales_last_month",
+      yearOverYearChange: "yoy",
+    };
+    const direction = criteria.order === "desc" ? "DESC" : "ASC";
+    const rows = this.query((db) =>
+      db
+        .prepare(
+          `SELECT * FROM (
+             SELECT f.business_id, b.sector_name, b.department_name, f.sales_last_month,
+               (f.sales_last_month - f.costs_last_month - f.expenses_last_month - ${TAXES_SUBQUERY}) * 100.0 / f.sales_last_month AS margin,
+               CASE WHEN f.sales_same_month_last_year > 0
+                 THEN (f.sales_last_month - f.sales_same_month_last_year) * 100.0 / f.sales_same_month_last_year END AS yoy
+             FROM monthly_financials f JOIN businesses b ON b.id = f.business_id
+             WHERE f.sales_last_month > 0 AND f.sales_last_month >= ?
+               AND (? IS NULL OR b.sector_code = ?) AND (? IS NULL OR b.department_code = ?)
+           ) f
+           WHERE ? <> 'yearOverYearChange' OR yoy IS NOT NULL
+           ORDER BY ${metricSql[criteria.rankBy]} ${direction}, business_id
+           LIMIT ?`
+        )
+        .all(
+          ...TAX_AND_LICENSE_CATEGORIES,
+          criteria.minSalesLastMonth,
+          criteria.sectorCode,
+          criteria.sectorCode,
+          criteria.departmentCode,
+          criteria.departmentCode,
+          criteria.rankBy,
+          criteria.limit
+        )
+    );
+    return rows.map((row) => ({
+      businessId: String(row.business_id),
+      sectorName: String(row.sector_name),
+      departmentName: String(row.department_name),
+      salesLastMonth: Number(row.sales_last_month),
+      operatingMarginPct: Number(row.margin),
+      yearOverYearChangePct: row.yoy === null ? null : Number(row.yoy),
+    }));
+  }
+
+  private catalog(codeColumn: string, nameColumn: string): CatalogEntry[] {
+    const rows = this.query((db) =>
+      db.prepare(`SELECT DISTINCT ${codeColumn} AS code, ${nameColumn} AS name FROM businesses ORDER BY code`).all()
+    );
+    return rows.map((row) => ({ code: String(row.code), name: String(row.name) }));
   }
 
   close(): void {

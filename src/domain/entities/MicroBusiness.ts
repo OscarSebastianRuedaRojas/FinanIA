@@ -33,3 +33,29 @@ export interface PeerFigures {
   expensesLastMonth: number;
   taxesAndLicensesLastMonth: number;
 }
+
+export interface CatalogEntry {
+  code: string;
+  name: string;
+}
+
+export type RankingMetric = "operatingMargin" | "salesLastMonth" | "yearOverYearChange";
+
+// Criterios de búsqueda; null = sin filtro
+export interface RankingCriteria {
+  sectorCode: string | null;
+  departmentCode: string | null;
+  rankBy: RankingMetric;
+  order: "asc" | "desc";
+  limit: number;
+  minSalesLastMonth: number;
+}
+
+export interface BusinessRanking {
+  businessId: string;
+  sectorName: string;
+  departmentName: string;
+  salesLastMonth: number;
+  operatingMarginPct: number;
+  yearOverYearChangePct: number | null;
+}

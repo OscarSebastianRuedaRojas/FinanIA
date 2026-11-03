@@ -1,6 +1,6 @@
 import { ToolResult } from "./AgentToolPort.js";
 
-export type ExecutionSource = "json" | "emicron" | "invoice";
+export type ExecutionSource = "json" | "emicron" | "invoice" | "goal";
 
 // Uso reportado por la API compatible con OpenAI de xAI (cost_in_usd_ticks: 1 USD = 10^10 ticks)
 export interface LLMUsage {

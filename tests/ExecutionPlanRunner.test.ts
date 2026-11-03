@@ -73,6 +73,25 @@ describe("runExecutionPlan", () => {
     expect(log.events.filter((e) => e.type === "run_validated")).toHaveLength(3);
   });
 
+  it("debe pasarle a cada caso su runId", async () => {
+    const seen: string[] = [];
+    const contextCase: ExecutionCase<unknown> = {
+      id: "E09",
+      title: "Caso que usa el runId",
+      source: "goal",
+      label: "objetivo",
+      run: async (_observer, context) => {
+        seen.push(context.runId);
+        return {};
+      },
+      validate: () => [],
+    };
+
+    await runExecutionPlan([contextCase], { log: new MemoryLog(), runIdPrefix: "s3-test" });
+
+    expect(seen).toEqual(["s3-test-E09"]);
+  });
+
   it("no debe dejar cifras de microdatos EMICRON en la bitácora", async () => {
     const log = new MemoryLog();
 
@@ -94,5 +113,34 @@ describe("renderExecutionReport", () => {
     expect(markdown).toContain("| E02 | Caso que lanza un error esperado | invoice | ⚠️ NOT_AN_INVOICE | ✅ 1/1 | — | 0 | $0.000000 |");
     expect(markdown).toContain("❌ Prioridad HIGH o CRITICAL — fue LOW");
     expect(markdown).toContain("Costo total: **$0.005000 USD**");
+  });
+});
+
+describe("Resultados y fallos por caso", () => {
+  const recoveringCase: ExecutionCase<unknown> = {
+    id: "E04",
+    title: "Caso que se recupera de un error de herramienta",
+    source: "emicron",
+    label: "7638460-1-1",
+    redactResult: true,
+    run: async (observer) => {
+      observer.toolCall({ tool: "compareWithSectorPeers", args: { scope: "department" }, durationMs: 1, result: { ok: false, error: { code: "INSUFFICIENT_PEERS", message: "pocos" } } });
+      observer.toolCall({ tool: "compareWithSectorPeers", args: { scope: "national" }, durationMs: 1, result: { ok: true, data: {} } });
+      return { priority: "HIGH" };
+    },
+    validate: () => [{ name: "Se recuperó con scope national", passed: true }],
+  };
+
+  it("debe listar cada caso con su resultado, sus fallos y si el agente se recuperó", async () => {
+    const reports = await runExecutionPlan([okCase, failingCase, unexpectedCase, recoveringCase], { log: new MemoryLog(), runIdPrefix: "s4-test" });
+
+    const markdown = renderExecutionReport(reports, { title: "Bitácora", generatedAt: "2026-11-03T12:00:00.000Z" });
+
+    expect(markdown).toContain("## Resultados y fallos por caso");
+    expect(markdown).toContain("Casos con algún fallo: **3/4** · Errores de herramientas: **1** (1 recuperado dentro del mismo caso) · Validaciones fallidas: **1** · Ejecuciones que terminaron en error: **1**");
+    expect(markdown).toContain("| E01 | ✅ Acierto | — |");
+    expect(markdown).toContain("| E02 | ✅ Acierto | Error de la ejecución `NOT_AN_INVOICE` (esperado por el caso) |");
+    expect(markdown).toContain("| E03 | ❌ Fallo | Validación fallida: Prioridad HIGH o CRITICAL — fue LOW |");
+    expect(markdown).toContain("| E04 | ✅ Acierto | `compareWithSectorPeers` ✗INSUFFICIENT_PEERS → recuperado |");
   });
 });
