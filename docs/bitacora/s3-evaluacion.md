@@ -56,6 +56,61 @@ Generado: 2026-11-02T01:25:20.880Z
 
 Casos elegidos con reglas determinísticas sobre EMICRON 2024 (ventas ≥ 1.000.000 COP, 6 por escenario, orden reproducible por hash del ID). En los objetivos, los IDs esperados salen del mismo ranking por SQL y se comparan con los dictámenes que el agente guardó en la base.
 
+## Resultados y fallos por caso
+
+Casos con algún fallo: **0/34** · Errores de herramientas: **0** (0 recuperados dentro del mismo caso) · Validaciones fallidas: **0** · Ejecuciones que terminaron en error: **0**
+
+| # | Resultado | Fallos y cómo terminó |
+| :--- | :--- | :--- |
+| C01 | ✅ Acierto | — |
+| C02 | ✅ Acierto | — |
+| C03 | ✅ Acierto | — |
+| C04 | ✅ Acierto | — |
+| C05 | ✅ Acierto | — |
+| C06 | ✅ Acierto | — |
+| C07 | ✅ Acierto | — |
+| C08 | ✅ Acierto | — |
+| C09 | ✅ Acierto | — |
+| C10 | ✅ Acierto | — |
+| C11 | ✅ Acierto | — |
+| C12 | ✅ Acierto | — |
+| C13 | ✅ Acierto | — |
+| C14 | ✅ Acierto | — |
+| C15 | ✅ Acierto | — |
+| C16 | ✅ Acierto | — |
+| C17 | ✅ Acierto | — |
+| C18 | ✅ Acierto | — |
+| C19 | ✅ Acierto | — |
+| C20 | ✅ Acierto | — |
+| C21 | ✅ Acierto | — |
+| C22 | ✅ Acierto | — |
+| C23 | ✅ Acierto | — |
+| C24 | ✅ Acierto | — |
+| C25 | ✅ Acierto | — |
+| C26 | ✅ Acierto | — |
+| C27 | ✅ Acierto | — |
+| C28 | ✅ Acierto | — |
+| C29 | ✅ Acierto | — |
+| C30 | ✅ Acierto | — |
+| G1 | ✅ Acierto | — |
+| G2 | ✅ Acierto | — |
+| G3 | ✅ Acierto | — |
+| G4 | ✅ Acierto | — |
+
+## Fallos encontrados y limitaciones
+
+Aunque los 34 casos acertaron, en S3 hubo fallos reales que corregimos y límites que conviene conocer:
+
+| # | Qué pasó | Cómo se resolvió |
+| :--- | :--- | :--- |
+| F1 | **Fuga de datos en la bitácora.** La primera versión registraba los argumentos completos de `saveAuditReport`, con diagnósticos que citaban cifras de negocios reales del DANE. | Detectado antes de publicar. En corridas con microdatos ahora solo se registran argumentos estructurales (IDs, filtros, prioridad); la bitácora ya generada se limpió con la misma función (commit `a4bc084`). |
+| F2 | **Bucle sin cierre.** Si el agente agotaba sus iteraciones, el dictamen caía a valores por defecto sin avisar. | Ahora se fuerza una última respuesta sin herramientas y queda registrada (commit `ac68b69`). En esta evaluación ningún caso llegó a ese límite. |
+| F3 | **Nombres de sector que no existen.** Un objetivo puede decir "restaurantes", pero el sector del DANE se llama "Alojamiento y servicios de comida". | `findBusinesses` responde `INVALID_ARGUMENTS` con la lista de sectores válidos para que el agente se corrija solo. |
+| L1 | **Chequeo parcialmente garantizado por el sistema.** En el escenario "Negocio en pérdida", la regla de prioridades del sistema ya fuerza HIGH/CRITICAL cuando hay riesgo de caja alto, así que ese chequeo mide al sistema completo y no solo al modelo. | Documentado; los otros escenarios exigen conductas del modelo (usar herramientas concretas, mencionar la caída o el gasto dominante). |
+| L2 | **Chequeos de texto por palabras clave.** "Menciona la caída" o "menciona el gasto dominante" se validan buscando palabras y sinónimos, no con comprensión semántica. | Aceptado como aproximación determinística y reproducible. |
+| L3 | **Una sola corrida por caso.** El modelo no es determinista: otra corrida podría elegir otro camino. | La carga de S4 (1.000 unidades) mide la estabilidad a escala. |
+| L4 | **Entrega fuera de plazo.** El trabajo de S3 se commiteó después del cierre y no se registró en la plataforma. | Se integra a `main` y se registra con la entrega de S4. |
+
 ## Detalle por ejecución
 
 ### C01 — Negocio en pérdida
