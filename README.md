@@ -223,7 +223,28 @@ npm run reporte:costos -- docs/bitacora/s3-evaluacion.jsonl --tarea emicron --un
 
 Genera [`docs/bitacora/reporte-costos.md`](docs/bitacora/reporte-costos.md) con el costo promedio, mínimo, máximo y total por tipo de tarea, más la proyección de costo y tiempo para las 1.000 unidades de S4.
 
-### 11. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 11. Alertas por WhatsApp (S4)
+El agente puede avisarle al operador por WhatsApp con la herramienta `sendAlert` (por ejemplo, ante un negocio en estado crítico), y el runner de S4 la usa para informar progreso y fallas. Funciona con el **sandbox de WhatsApp de Twilio**:
+
+1. Creá una cuenta en [twilio.com](https://www.twilio.com) y abrí el sandbox de WhatsApp (*Messaging → Try it out → Send a WhatsApp message*).
+2. Desde tu WhatsApp, enviá el mensaje `join <tu-código>` al **+1 415 523 8886**. La sesión dura 3 días; después hay que volver a enviarlo.
+3. Agregá estas variables a tu `.env` (nunca se suben al repositorio):
+
+   | Variable | Valor |
+   | :--- | :--- |
+   | `TWILIO_ACCOUNT_SID` | Account SID de tu consola (empieza con `AC`) |
+   | `TWILIO_AUTH_TOKEN` | Auth Token de tu consola (o `TWILIO_API_KEY` + `TWILIO_API_SECRET`) |
+   | `ALERT_WHATSAPP_TO` | Tu número con código de país, ej. `+573001234567` |
+   | `TWILIO_WHATSAPP_FROM` | Opcional; por defecto el sandbox `whatsapp:+14155238886` |
+
+4. Verificá la configuración:
+   ```bash
+   npm run alerta:prueba
+   ```
+
+Si el número no está unido al sandbox o la sesión venció, la alerta falla con `ALERT_RECIPIENT_NOT_JOINED` y el mensaje explica cómo volver a unirse. Las caídas de red o errores 5xx se reintentan con backoff exponencial. Sin estas variables, `sendAlert` no se le ofrece al agente.
+
+### 12. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm test
 ```

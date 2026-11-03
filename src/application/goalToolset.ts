@@ -6,6 +6,8 @@ import { createSearchTools } from "./tools/searchTools.js";
 import { createMonthlyTools } from "./tools/monthlyTools.js";
 import { createActionTools } from "./tools/actionTools.js";
 import { createInvoiceTools } from "./tools/invoiceTools.js";
+import { createAlertTools } from "./tools/alertTools.js";
+import { AlertPort } from "../ports/AlertPort.js";
 
 // Herramientas del agente por objetivo: buscar, auditar, actuar y (opcional) leer facturas
 export function buildGoalToolset(deps: {
@@ -13,6 +15,7 @@ export function buildGoalToolset(deps: {
   reports: AuditReportRepository;
   runId: string | null;
   scanInvoice?: { scan: (absolutePath: string) => Promise<ScanInvoiceOutcome>; root: string };
+  alerts?: AlertPort;
 }): AgentToolset {
   return {
     tools: [
@@ -20,6 +23,7 @@ export function buildGoalToolset(deps: {
       ...createMonthlyTools(deps.businesses),
       ...createActionTools(deps.reports, deps.businesses, { runId: deps.runId }),
       ...(deps.scanInvoice ? createInvoiceTools(deps.scanInvoice.scan, { root: deps.scanInvoice.root }) : []),
+      ...(deps.alerts ? createAlertTools(deps.alerts) : []),
     ],
     context:
       "Trabajás sobre 78.501 micronegocios reales de Colombia (Encuesta de Micronegocios EMICRON 2024 del DANE); las cifras están en pesos colombianos y corresponden al último mes reportado.",

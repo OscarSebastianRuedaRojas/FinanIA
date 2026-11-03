@@ -9,6 +9,8 @@ import { buildGoalToolset } from "./application/goalToolset.js";
 import { EMICRON_DB_PATH } from "./infrastructure/emicron/buildEmicronRun.js";
 import { readInvoiceImage } from "./infrastructure/invoice/readInvoiceImage.js";
 import { JsonlExecutionLog } from "./infrastructure/logging/JsonlExecutionLog.js";
+import { TwilioWhatsAppAlertAdapter } from "./adapters/notifications/TwilioWhatsAppAlertAdapter.js";
+import { AlertError, AlertPort } from "./ports/AlertPort.js";
 
 const USAGE = 'Uso: npm run agent -- "<objetivo>"\nEj.: npm run agent -- "Encontrá los 3 restaurantes de Antioquia con peor margen y guardá un plan para cada uno"';
 
@@ -21,6 +23,14 @@ async function main(): Promise<number> {
   if (!process.env.LLM_API_KEY || process.env.LLM_API_KEY === "pk_placeholder") {
     console.error("❌ LLM_API_KEY no está configurada: el agente razona con Grok real.");
     return 1;
+  }
+
+  // sendAlert solo se ofrece al agente si WhatsApp está configurado en el .env
+  let alerts: AlertPort | undefined;
+  try {
+    alerts = TwilioWhatsAppAlertAdapter.fromEnv();
+  } catch (error) {
+    if (!(error instanceof AlertError)) throw error;
   }
 
   const runId = `goal-${Date.now()}`;
@@ -36,12 +46,14 @@ async function main(): Promise<number> {
       scan: (file) => new ScanInvoiceUseCase(new GrokVisionAdapter({ observer: recorder }), readInvoiceImage).execute(file),
       root: process.cwd(),
     },
+    alerts,
   });
 
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
   console.log("\x1b[1m\x1b[33m%s\x1b[0m", "🎯 FINANIA — AGENTE AUTÓNOMO POR OBJETIVO");
   console.log("\x1b[36m%s\x1b[0m", "==================================================");
-  console.log(`Objetivo: \x1b[35m${goal}\x1b[0m\n`);
+  console.log(`Objetivo: \x1b[35m${goal}\x1b[0m`);
+  console.log(alerts ? "📲 Alertas por WhatsApp: activadas\n" : "📲 Alertas por WhatsApp: desactivadas (configurá Twilio en el .env)\n");
 
   recorder.start();
   try {

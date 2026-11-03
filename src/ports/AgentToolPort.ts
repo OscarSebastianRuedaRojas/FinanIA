@@ -1,7 +1,9 @@
 import type { InvoiceScanErrorCode } from "./InvoiceScannerPort.js";
+import type { AlertErrorCode } from "./AlertPort.js";
 
 export type ToolErrorCode =
   | InvoiceScanErrorCode
+  | AlertErrorCode
   | "INVALID_ARGUMENTS"
   | "BUSINESS_NOT_FOUND"
   | "INSUFFICIENT_PEERS"

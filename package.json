@@ -10,6 +10,7 @@
     "start:hormiga": "tsx src/index.ts data/casos/fuga_silenciosa_servicios.json",
     "start:emicron": "tsx src/index.ts --emicron",
     "agent": "tsx src/agent.ts",
+    "alerta:prueba": "tsx src/alertTest.ts",
     "scan:factura": "tsx src/scanInvoice.ts",
     "bitacora:s2": "tsx src/runS2Executions.ts",
     "eval:s3": "tsx src/runS3Evaluation.ts",
