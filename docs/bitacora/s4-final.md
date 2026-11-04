@@ -37,6 +37,25 @@ Generado: 2026-11-04T15:26:51.613Z
 | L1 | **Validación estructural.** Cada unidad se valida con chequeos generales: terminó sin error, usó herramientas reales, dictamen con el esquema correcto y prioridad coherente con el riesgo de caja. | No hay un resultado esperado por negocio como en S3; la calidad por escenario se midió en los 34 casos de S3. |
 | L2 | **Comportamiento uniforme.** En las 1.000 unidades el agente usó las mismas tres herramientas. | Es el camino esperado para una auditoría individual; la planificación variable se evaluó con los objetivos en texto libre de S3. |
 
+## Notificaciones al celular durante la corrida
+
+Para operar la corrida sin estar frente a la computadora, desarrollé un sistema de alertas que avisa al celular del operador mediante notificaciones push de [ntfy](https://ntfy.sh). Detrás hay un puerto `AlertPort` independiente del proveedor, que también tiene un adaptador de WhatsApp con Twilio. El runner envía:
+
+| Cuándo | Severidad | Qué informa |
+| :--- | :--- | :--- |
+| Al iniciar la corrida | INFO | Unidades pendientes, ritmo y tope de créditos |
+| **Cada 100 unidades** | INFO | Unidades procesadas, correctas, fallidas y costo acumulado |
+| **Cuando 3 unidades seguidas fallan** | WARNING | Cantidad de fallos seguidos y código del último error (la corrida sigue) |
+| Al alcanzar el tope de créditos | CRITICAL | Gasto, tope y unidades que quedan pendientes |
+| Al terminar o detenerse | INFO / WARNING | Totales finales: correctas, fallidas, pendientes y costo |
+
+Diseño:
+- La alerta de errores se dispara con **3 fallos consecutivos**, no con cada fallo aislado: un error suelto lo resuelve el reintento automático y no amerita despertar al operador.
+- Si una alerta no se puede enviar, la corrida **no se detiene**: el fallo solo queda advertido en la consola.
+- Las alertas identifican a los negocios por su ID y **no incluyen cifras del DANE**, porque pasan por un servicio externo. El tema de ntfy, que funciona como contraseña, y el token nunca aparecen en mensajes de error ni en la bitácora.
+
+En esta corrida no hubo fallos, así que correspondían la alerta de inicio, 10 de progreso (100, 200 … 1.000 unidades) y la de cierre. Los envíos de alertas no quedan registrados en la bitácora JSONL, por eso este informe no los puede listar uno por uno.
+
 ## Fallos por código
 
 Ninguna unidad registró fallos.
