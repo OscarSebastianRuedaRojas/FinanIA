@@ -223,7 +223,65 @@ npm run reporte:costos -- docs/bitacora/s3-evaluacion.jsonl --tarea emicron --un
 
 Genera [`docs/bitacora/reporte-costos.md`](docs/bitacora/reporte-costos.md) con el costo promedio, mínimo, máximo y total por tipo de tarea, más la proyección de costo y tiempo para las 1.000 unidades de S4.
 
-### 11. Ejecutar la Suite de Pruebas Unitarias e Integración
+### 11. Alertas al Celular: ntfy o WhatsApp (S4)
+El agente puede avisarle al operador con la herramienta `sendAlert` (por ejemplo, ante un negocio en estado crítico), y el runner de S4 la usa para informar progreso y fallas. Hay dos canales; si configurás los dos, se usa ntfy salvo que indiques `ALERT_CHANNEL=whatsapp`.
+
+#### Opción A — ntfy (gratis, sin cuenta)
+1. Instalá la app **ntfy** en tu celular ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) o [iOS](https://apps.apple.com/app/ntfy/id1625396347)).
+2. Generá un nombre de tema aleatorio. **En ntfy.sh el tema funciona como contraseña**: cualquiera que lo conozca puede leer tus alertas.
+   ```bash
+   node -e "console.log('finania-' + require('crypto').randomBytes(12).toString('base64url'))"
+   ```
+3. En la app, suscribite a ese tema y agregalo a tu `.env`:
+
+   | Variable | Valor |
+   | :--- | :--- |
+   | `NTFY_TOPIC` | El tema que generaste (10 a 64 caracteres: letras, números, `-` o `_`) |
+   | `NTFY_SERVER` | Opcional; por defecto `https://ntfy.sh` |
+   | `NTFY_TOKEN` | Opcional; token de acceso si usás un tema reservado |
+
+4. Verificá con `npm run alerta:prueba`.
+
+Las alertas no incluyen cifras de los negocios del DANE: el agente los identifica por su ID, porque el mensaje pasa por un servidor externo.
+
+#### Opción B — WhatsApp con el sandbox de Twilio (requiere saldo en Twilio)
+1. Creá una cuenta en [twilio.com](https://www.twilio.com) y abrí el sandbox de WhatsApp (*Messaging → Try it out → Send a WhatsApp message*).
+2. Desde tu WhatsApp, enviá el mensaje `join <tu-código>` al **+1 415 523 8886**. La sesión dura 3 días; después hay que volver a enviarlo.
+3. Agregá estas variables a tu `.env` (nunca se suben al repositorio):
+
+   | Variable | Valor |
+   | :--- | :--- |
+   | `TWILIO_ACCOUNT_SID` | Account SID de tu consola (empieza con `AC`) |
+   | `TWILIO_AUTH_TOKEN` | Auth Token de tu consola (o `TWILIO_API_KEY` + `TWILIO_API_SECRET`) |
+   | `ALERT_WHATSAPP_TO` | Tu número con código de país, ej. `+573001234567` |
+   | `TWILIO_WHATSAPP_FROM` | Opcional; por defecto el sandbox `whatsapp:+14155238886` |
+
+4. Verificá la configuración:
+   ```bash
+   npm run alerta:prueba
+   ```
+
+Si el número no está unido al sandbox o la sesión venció, la alerta falla con `ALERT_RECIPIENT_NOT_JOINED` y el mensaje explica cómo volver a unirse. En los dos canales, las caídas de red o errores 5xx se reintentan con backoff exponencial. Si no hay ningún canal configurado, `sendAlert` no se le ofrece al agente.
+
+### 12. Prueba de Carga Desatendida (S4)
+El runner procesa **1.000 micronegocios reales** a ritmo fijo durante **12 horas**, sin intervención:
+
+```bash
+npm run s4:carga -- --unidades 1000 --horas 12 --concurrencia 2 --tope-usd 25
+```
+
+- **Ritmo fijo:** reparte las unidades en el tiempo indicado (1.000 en 12 h = una cada ~43 s), con concurrencia limitada.
+- **Checkpoint:** el estado de cada unidad vive en `data/finania.sqlite`. Si el proceso se cae o lo detenés con Ctrl+C, se retoma sin repetir trabajo:
+  ```bash
+  npm run s4:carga -- --run-id <id-de-la-corrida>
+  ```
+- **Fallos:** cada unidad fallida se reintenta una vez y se guarda su código de error. Tres fallos seguidos disparan una alerta.
+- **Tope de créditos:** al llegar al tope no se inician más unidades, se envía una alerta CRITICAL y el resto queda pendiente.
+- **Alertas al celular:** inicio, progreso cada 100 unidades, fallos, tope y cierre (requiere el canal de la sección 11).
+- **La plataforma actúa:** el dictamen de cada negocio se guarda en la base.
+- **Evidencia:** `docs/bitacora/<id>.md` (resumen, fallos por código y resultado de cada unidad, regenerado cada 25 unidades) y `docs/bitacora/<id>.jsonl` (bitácora completa, sin cifras del DANE).
+
+### 13. Ejecutar la Suite de Pruebas Unitarias e Integración
 ```bash
 npm test
 ```

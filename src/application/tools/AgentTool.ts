@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { DataSourceError } from "../../ports/MicroBusinessDataPort.js";
 import { InvoiceScanError } from "../../ports/InvoiceScannerPort.js";
+import { AlertError } from "../../ports/AlertPort.js";
 import { AgentTool, ToolErrorCode, ToolResult } from "../../ports/AgentToolPort.js";
 
 export type { AgentTool, AgentToolset, ToolErrorCode, ToolResult } from "../../ports/AgentToolPort.js";
@@ -39,6 +40,7 @@ export function defineTool<S extends z.ZodType>(definition: {
         if (error instanceof ToolError) return toolFailure(error.code, error.message);
         if (error instanceof DataSourceError) return toolFailure("DATA_SOURCE_ERROR", error.message);
         if (error instanceof InvoiceScanError) return toolFailure(error.code, error.message);
+        if (error instanceof AlertError) return toolFailure(error.code, error.message);
         return toolFailure("TOOL_EXECUTION_ERROR", error?.message ?? String(error));
       }
     },
