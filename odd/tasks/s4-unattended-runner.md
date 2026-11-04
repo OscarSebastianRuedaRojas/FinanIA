@@ -23,7 +23,7 @@ Official S4 deliverable: "1,000 unidades de trabajo, 12 horas desatendido y bit�
 | --- | --- | --- | --- | --- |
 | A1 | S1, S2 | inline | done | RED missing module → GREEN; phone-number leaks in error messages found and covered by tests; suite 115/115; independent security verifier: no blockers (advisory on local-format numbers fixed); live send pending user Twilio credentials |
 | A2 | S3, S3.1–S3.5 | inline | done | RED → GREEN: runner 10/10, checkpoint 5/5, report 5/5; suite 147/147; live rehearsal s4-ensayo: 3/3 validated, US$0.0456, resume skips finished units, 3 reports saved, log redacted |
-| A3 | S4 | inline | pending | — |
+| A3 | S4 | inline | done | `s4-final`: 1,000/1,000 validated, 0 failed, 0 retries, 11.99 h unattended at 43.2 s per unit, 6,085,946 tokens, US$13.88 (cap US$25); log redacted |
 
 ## Log
 
@@ -32,3 +32,4 @@ Official S4 deliverable: "1,000 unidades de trabajo, 12 horas desatendido y bit�
 - L3 (2026-11-03): Twilio account suspended for lack of funds (HTTP 401, 20003); CallMeBot not accepting new users ("The bot is currently full"). User chose ntfy push notifications ("Otro canal gratis (ntfy)"). ntfy.sh topic acts as password; JSON publishing used so titles with accents/emojis work; topic and token are scrubbed from error messages; alert text must not quote DANE figures (third-party server). Twilio adapter kept; channel selected from .env (ALERT_CHANNEL, else ntfy, else WhatsApp).
 - L4 (2026-11-03): Live check `npm run alerta:prueba` via ntfy.sh accepted (message id lZQGHfOH658X); user confirmed: "Sí, llegó". A first attempt was rejected by the topic validation (7-character topic) before any request, as designed.
 - L5 (2026-11-03, user choice): "Ritmo fijo (Recomendado)" — spread the 1,000 units over 12 hours.
+- L6 (2026-11-04, user): "Listo revisa ya hice el proceso de las 1000 unidades". Verified from the checkpoint and the log: 2026-11-04 03:27 → 15:26 UTC, no pause over 5 min, 2,000 Grok calls, 3,000 tool calls, 0 tool errors, 0 forced final answers; latency spikes up to 67 s were absorbed by concurrency 2.
